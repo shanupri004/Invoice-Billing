@@ -1,229 +1,280 @@
 import React, { useState } from 'react';
 import {
   View,
-  TextInput,
-  StyleSheet,
   Text,
+  StyleSheet,
   TouchableOpacity,
   Alert,
   SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS } from '../constants/Colors';
 import Logo from '../assets/svg/Logo.svg';
+import { LoginService } from '../services/Login';
+
+const APP_VERSION = 'v2.4.0';
 
 export default function LoginScreen({ navigation }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [pin, setPin] = useState('');
 
-  const handleLogin = async () => {
-    if (username === 'iyappan' && password === 'priya') {
-      const loginData = {
-        isAuthenticated: true,
-        loginTime: Date.now(),
-      };
+  const handlePress = num => {
+    if (pin.length >= 4) return;
+    const newPin = pin + num;
+    setPin(newPin);
+    if (newPin.length === 4) handleLogin(newPin);
+  };
 
-      await AsyncStorage.setItem('auth', JSON.stringify(loginData));
+  const handleDelete = () => setPin(prev => prev.slice(0, -1));
 
-      navigation.replace('Dashboard');
-    } else {
-      Alert.alert('Login Failed', 'Invalid username or password');
+  const handleLogin = async enteredPin => {
+    try {
+      const res = await LoginService.loginWithPin(enteredPin);
+
+      if (res.success) {
+        navigation.replace('Dashboard');
+      } else {
+        Alert.alert('Error', res.message);
+        setPin('');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Something went wrong');
     }
   };
 
+  const renderDots = () => (
+    <View style={styles.dotsContainer}>
+      {[0, 1, 2, 3].map(i => (
+        <View
+          key={i}
+          style={[
+            styles.dot,
+            {
+              backgroundColor:
+                i < pin.length ? COLORS.primary : COLORS.dotEmpty,
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+
+  const KeypadButton = ({ label, onPress }) => (
+    <TouchableOpacity
+      style={styles.key}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityLabel={`Key ${label}`}
+    >
+      <Text style={styles.keyText}>{label}</Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.container}>
-            {/* Logo */}
-            <View style={styles.logo}>
-              <Logo style={{ width: '100%', height: '100%' }} />
-            </View>
-
-            <Text allowFontScaling style={styles.company}>
-              Aadhi Engine Services
-            </Text>
-
-            <Text allowFontScaling style={styles.title}>
-              Login
-            </Text>
-
-            <Text allowFontScaling style={styles.subtitile}>
-              Please enter your credentials to continue
-            </Text>
-
-            <View style={styles.loginContainer}>
-              {/* Username */}
-              <Text allowFontScaling style={styles.label}>
-                Username
-              </Text>
-
-              <View style={styles.inputContainer}>
-                <User size={26} color="#999" style={styles.icon} />
-
-                <TextInput
-                  placeholder="Enter your username"
-                  placeholderTextColor="#aaa"
-                  autoCapitalize="none"
-                  style={styles.textInput}
-                  value={username}
-                  onChangeText={setUsername}
-                />
-              </View>
-
-              {/* Password */}
-              <Text allowFontScaling style={styles.label}>
-                Password
-              </Text>
-
-              <View style={styles.inputContainer}>
-                <Lock size={26} color="#999" style={styles.icon} />
-
-                <TextInput
-                  placeholder="Enter your password"
-                  placeholderTextColor="#aaa"
-                  secureTextEntry={!showPassword}
-                  style={styles.textInput}
-                  value={password}
-                  onChangeText={setPassword}
-                />
-
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff size={26} color="#999" />
-                  ) : (
-                    <Eye size={26} color="#999" />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Login Button */}
-              <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                <Text allowFontScaling style={styles.buttonText}>
-                  Login
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Footer */}
-            <Text allowFontScaling style={styles.footer}>
-              OFFLINE BILLING SYSTEM{'\n'}
-              v2.4.0 - Local Network Mode
-            </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* ── Header Section ── */}
+        <View style={styles.headerSection}>
+          <View style={styles.logoContainer}>
+            <Logo style={styles.logoSvg} />
           </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+          <Text style={styles.company}>Aadhi Engine Services</Text>
+          <View style={styles.divider} />
+        </View>
+
+        {/* ── PIN Section ── */}
+        <View style={styles.pinSection}>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>
+            Enter your 4-digit PIN to continue
+          </Text>
+          {renderDots()}
+        </View>
+
+        {/* ── Keypad ── */}
+        <View style={styles.keypadWrapper}>
+          <View style={styles.keypad}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+              <KeypadButton
+                key={num}
+                label={String(num)}
+                onPress={() => handlePress(String(num))}
+              />
+            ))}
+            <View style={styles.keyEmpty} />
+            <KeypadButton label="0" onPress={() => handlePress('0')} />
+            <TouchableOpacity
+              style={styles.key}
+              onPress={handleDelete}
+              activeOpacity={0.7}
+              accessibilityLabel="Delete"
+            >
+              <Text style={styles.keyText}>⌫</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Footer ── */}
+        <View style={styles.footerSection}>
+          <Text style={styles.footerLabel}>OFFLINE BILLING SYSTEM</Text>
+          <Text style={styles.footerVersion}>{APP_VERSION}</Text>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    padding: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#f4f6fb',
   },
 
-  logo: {
-    height: 90,
-    width: 90,
-    borderRadius: 30,
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+  },
+
+  // ── Header ──────────────────────────────────────
+  headerSection: {
+    alignItems: 'center',
+    width: '100%',
+    position: 'relative',
+    top: 40,
+  },
+
+  logoContainer: {
+    height: 72,
+    width: 72,
+    borderRadius: 22,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+    // Subtle shadow for depth
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+
+  logoSvg: {
+    width: '60%',
+    height: '60%',
   },
 
   company: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 28,
-    color: 'black',
+    color: COLORS.text ?? '#1a1a2e',
+    letterSpacing: 0.3,
+    marginBottom: 16,
+  },
+
+  divider: {
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: COLORS.primary,
+    opacity: 0.5,
+  },
+
+  // ── PIN Section ──────────────────────────────────
+  pinSection: {
+    alignItems: 'center',
   },
 
   title: {
-    fontSize: 38,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontSize: 26,
+    fontWeight: '700',
     color: COLORS.primary,
-    marginBottom: 8,
-  },
-
-  subtitile: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    color: COLORS.secondary,
-    marginBottom: 36,
-  },
-
-  loginContainer: {
-    width: '100%',
-  },
-
-  label: {
-    color: 'black',
     marginBottom: 6,
-    fontSize: 20,
-    fontWeight: 'bold',
+    letterSpacing: 0.2,
   },
 
-  inputContainer: {
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.secondary ?? '#888',
+    marginBottom: 28,
+    letterSpacing: 0.1,
+  },
+
+  dotsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    paddingHorizontal: 18,
-    paddingVertical: 6,
-    marginBottom: 22,
+    justifyContent: 'center',
+    gap: 16,
+  },
+
+  dot: {
+    width: 20,
+    height: 20,
+    borderRadius: 7,
+  },
+
+  // ── Keypad ──────────────────────────────────────
+  keypadWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
+
+  keypad: {
+    width: '85%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    rowGap: 12,
+    columnGap: 0,
+  },
+
+  key: {
+    width: '30%',
+    height: 40,
+    aspectRatio: 1.4,
+    marginHorizontal: '1.5%',
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Crisp card shadow
+    shadowColor: '#b0bec5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
     elevation: 3,
   },
 
-  icon: {
-    marginRight: 12,
-  },
-
-  textInput: {
-    flex: 1,
-    paddingVertical: 16,
-    fontSize: 20,
-    color: 'black',
-  },
-
-  button: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 20,
-    borderRadius: 30,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-
-  buttonText: {
-    color: 'white',
+  keyText: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 
-  footer: {
-    textAlign: 'center',
-    marginTop: 60,
-    color: '#999',
-    fontSize: 16,
-    lineHeight: 22,
+  keyEmpty: {
+    width: '30%',
+    marginHorizontal: '1.5%',
+  },
+
+  // ── Footer ──────────────────────────────────────
+  footerSection: {
+    alignItems: 'center',
+    gap: 2,
+  },
+
+  footerLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#b0b8c8',
+    letterSpacing: 1.5,
+  },
+
+  footerVersion: {
+    fontSize: 11,
+    color: '#c8cdd8',
+    letterSpacing: 0.5,
   },
 });

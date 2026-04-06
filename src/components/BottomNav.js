@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Home, PlusCircle, FileText, Settings } from 'lucide-react-native';
+import { Home, PlusCircle, FileText, BicepsFlexed } from 'lucide-react-native';
 import { COLORS } from '../constants/Colors';
 
 export default function BottomNav({ navigation, active }) {
   const tabs = [
     { name: 'Home', icon: Home, screen: 'Dashboard' },
-    { name: 'Create', icon: PlusCircle, screen: 'InvoiceFlow' },
+    { name: 'Create', icon: PlusCircle, screen: 'InvoiceForm' },
+    { name: 'Labour', icon: BicepsFlexed, screen: 'labour' },
     { name: 'Invoices', icon: FileText, screen: 'Invoices' },
-    { name: 'Settings', icon: Settings, screen: 'Settings' },
   ];
 
   return (

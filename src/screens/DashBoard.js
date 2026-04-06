@@ -6,18 +6,16 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
   Platform,
 } from 'react-native';
 import { COLORS } from '../constants/Colors';
 import BottomNav from '../components/BottomNav';
-import { FileText, BarChart3 } from 'lucide-react-native';
+import { Wrench, BicepsFlexed, UserRound } from 'lucide-react-native';
 
 export default function DashboardScreen({ navigation }) {
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f4f6fb" />
       <View style={styles.container}>
         {/* Fixed Header */}
         <View style={styles.header}>
@@ -32,15 +30,15 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.quickRow}>
             <TouchableOpacity
               style={styles.quickCard}
-              onPress={() => navigation.navigate('InvoiceFlow')}
+              onPress={() => navigation.navigate('InvoiceForm')}
             >
-              <FileText size={34} color={COLORS.primary} />
-              <Text style={styles.quickText}>Create Invoice</Text>
+              <Wrench size={34} color={COLORS.primary} />
+              <Text style={styles.quickText}>Product Invoice</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.quickCard}>
-              <BarChart3 size={34} color={COLORS.primary} />
-              <Text style={styles.quickText}>Reports</Text>
+              <BicepsFlexed size={34} color={COLORS.primary} />
+              <Text style={styles.quickText}>Labour Invoices</Text>
             </TouchableOpacity>
           </View>
 
@@ -58,6 +56,13 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.statChange}>+15.4% this month</Text>
             </View>
           </View>
+          <TouchableOpacity
+            style={styles.LongCard}
+            onPress={() => navigation.navigate('customer')}
+          >
+            <UserRound size={34} color={COLORS.primary} />
+            <Text style={styles.LongText}>Customers</Text>
+          </TouchableOpacity>
 
           {/* Today Summary */}
           <Text style={styles.sectionTitle}>MONTHLY SUMMARY</Text>
@@ -170,7 +175,6 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     paddingHorizontal: 24,
     paddingVertical: 16,
     backgroundColor: '#f4f6fb',
@@ -213,6 +217,23 @@ const styles = StyleSheet.create({
 
   quickText: {
     marginTop: 12,
+    fontWeight: '600',
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  LongCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    flexDirection: 'row', // important for horizontal layout
+    alignItems: 'center',
+    // justifyContent: 'space-aroun',
+    gap: 16,
+    borderRadius: 18,
+    marginTop: 14,
+    padding: 16, // add spacing inside
+    elevation: 3,
+  },
+  LongText: {
     fontWeight: '600',
     fontSize: 18,
     textAlign: 'center',

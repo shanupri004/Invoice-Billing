@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  StatusBar,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -18,12 +17,8 @@ import {
   Printer,
 } from 'lucide-react-native';
 import { COLORS } from '../constants/Colors';
-import StepIndicator from '../components/StepIndicator';
 import { numberToIndianWords } from '../utils/numberToIndianWords';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { generateInvoiceHTML } from '../utils/generateInvoiceHTML';
-import RNPrint from 'react-native-print';
-import Share from 'react-native-share';
 
 export default function Step4({ route, navigation }) {
   const invoiceData = route?.params?.invoice || {};
@@ -56,32 +51,12 @@ export default function Step4({ route, navigation }) {
     }
   };
 
-  const shareInvoice = async () => {
-    try {
-      const html = generateInvoiceHTML({ invoiceData, amountInWords });
-
-      const results = await RNPrint.printToFile({
-        html: html,
-        fileName: `AES${invoiceData.invoiceNumber}`,
-      });
-
-      await Share.open({
-        url: `file://${results.filePath}`,
-        type: 'application/pdf',
-      });
-    } catch (error) {
-      console.log('PDF ERROR:', error);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <StatusBar barStyle="dark-content" backgroundColor="#f4f6fb" />
-
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
@@ -233,10 +208,7 @@ export default function Step4({ route, navigation }) {
 
               {/* Share + Print */}
               <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={shareInvoice}
-                >
+                <TouchableOpacity style={styles.actionBtn}>
                   <View style={styles.btnContent}>
                     <Share2 size={20} color="#333" />
                     <Text style={styles.actionText}>Share</Text>
@@ -264,7 +236,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f6fb',
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,

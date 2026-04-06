@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  StatusBar,
   Platform,
   ScrollView,
 } from 'react-native';
@@ -26,7 +25,6 @@ export default function SettingScreen({ navigation }) {
   };
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f4f6fb" />
       <View style={styles.container}>
         {/* Fixed Header */}
         <View style={styles.header}>
@@ -107,7 +105,6 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     backgroundColor: '#f4f6fb',
     borderBottomWidth: 1,
     borderColor: '#e5e7eb',
