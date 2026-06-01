@@ -94,7 +94,7 @@ export default function DashboardScreen({ navigation }) {
           {/* Recent Invoices */}
           <View style={styles.invoiceHeader}>
             <Text style={styles.sectionTitle}>RECENT INVOICES</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('InvoiceList')}>
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>

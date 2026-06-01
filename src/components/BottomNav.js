@@ -8,7 +8,7 @@ export default function BottomNav({ navigation, active }) {
     { name: 'Home', icon: Home, screen: 'Dashboard' },
     { name: 'Create', icon: PlusCircle, screen: 'InvoiceForm' },
     { name: 'Labour', icon: BicepsFlexed, screen: 'labour' },
-    { name: 'Invoices', icon: FileText, screen: 'Invoices' },
+    { name: 'Invoices', icon: FileText, screen: 'InvoiceList' },
   ];
 
   return (

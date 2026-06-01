@@ -1,7 +1,6 @@
 // src/services/invoiceService.js
-import { supabase } from '../lib/supabase';
 
-console.log('SUPABASE CHECK:', supabase);
+import { supabase } from '../lib/supabase';
 
 // ─────────────────────────────────────────────
 // 🔹 DB → App Model
@@ -10,20 +9,28 @@ console.log('SUPABASE CHECK:', supabase);
 const mapInvoice = row => ({
   id: row.id,
   invoiceCode: row.invoice_code,
+  invoiceType: row.invoice_type,
+  invoiceDate: row.invoice_date,
+
   customerId: row.customer_id,
-  grandTotal: Number(row.grand_total),
-  status: row.status,
+
+  paymentStatus: row.payment_status,
   paymentMode: row.payment_mode,
+
+  items: row.items || [],
+
+  totalAmount: Number(row.total_amount),
+
   createdAt: row.created_at,
   updatedAt: row.updated_at,
-});
 
-const mapInvoiceItem = row => ({
-  id: row.id,
-  invoiceId: row.invoice_id,
-  productName: row.product_name,
-  quantity: row.quantity,
-  price: Number(row.price),
+  customer: row.customer
+    ? {
+        id: row.customer.id,
+        name: row.customer.name,
+        mobile: row.customer.mobile,
+      }
+    : null,
 });
 
 // ─────────────────────────────────────────────
@@ -31,21 +38,20 @@ const mapInvoiceItem = row => ({
 // ─────────────────────────────────────────────
 
 const toInvoice = payload => ({
+  invoice_type: payload.invoiceType, // PRODUCT | LABOUR
+  invoice_date: payload.invoiceDate,
+
   customer_id: payload.customerId,
-  grand_total: payload.grandTotal,
-  status: payload.status || 'PENDING',
+
+  payment_status: payload.paymentStatus || 'PENDING',
   payment_mode: payload.paymentMode || null,
+
+  items: payload.items || [],
+
+  total_amount: payload.totalAmount,
+
   is_deleted: false,
 });
-
-const toInvoiceItems = (items, invoiceId) =>
-  items.map(i => ({
-    invoice_id: invoiceId,
-    product_name: i.name,
-    quantity: i.quantity,
-    price: i.price,
-    is_deleted: false,
-  }));
 
 // ─────────────────────────────────────────────
 // 🚀 Service
@@ -53,10 +59,18 @@ const toInvoiceItems = (items, invoiceId) =>
 
 export const invoiceService = {
   // ✅ Get all invoices
+
   async getAll() {
     const { data, error } = await supabase
-      .from('invoices')
-      .select('*')
+      .from('invoice')
+      .select(`
+        *,
+        customer (
+          id,
+          name,
+          mobile
+        )
+      `)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false });
 
@@ -65,61 +79,67 @@ export const invoiceService = {
     return data.map(mapInvoice);
   },
 
-  // ✅ Get single invoice with items
+  // ✅ Get by ID
+
   async getById(id) {
     const { data, error } = await supabase
-      .from('invoices')
-      .select(
-        `
+      .from('invoice')
+      .select(`
         *,
-        invoice_items (*)
-      `,
-      )
+        customer (
+          id,
+          name,
+          mobile
+        )
+      `)
       .eq('id', id)
       .eq('is_deleted', false)
       .single();
 
     if (error) throw error;
 
-    return {
-      ...mapInvoice(data),
-      items: data.invoice_items.map(mapInvoiceItem),
-    };
+    return mapInvoice(data);
   },
 
-  // ✅ Create invoice + items (IMPORTANT)
+  // ✅ Create
+
   async create(payload) {
-    // 1️⃣ Insert invoice
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
+    const { data, error } = await supabase
+      .from('invoice')
       .insert([toInvoice(payload)])
-      .select()
+      .select(`
+        *,
+        customer (
+          id,
+          name,
+          mobile
+        )
+      `)
       .single();
 
-    if (invoiceError) throw invoiceError;
+    if (error) throw error;
 
-    // 2️⃣ Insert items
-    if (payload.items?.length) {
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(toInvoiceItems(payload.items, invoice.id));
-
-      if (itemsError) throw itemsError;
-    }
-
-    return mapInvoice(invoice);
+    return mapInvoice(data);
   },
 
-  // ✅ Update invoice (basic)
+  // ✅ Update
+
   async update(id, payload) {
     const { data, error } = await supabase
-      .from('invoices')
+      .from('invoice')
       .update({
         ...toInvoice(payload),
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        customer (
+          id,
+          name,
+          mobile
+        )
+      `)
       .single();
 
     if (error) throw error;
@@ -127,29 +147,19 @@ export const invoiceService = {
     return mapInvoice(data);
   },
 
-  // ✅ Replace items (simple approach)
-  async replaceItems(invoiceId, items) {
-    // delete old (soft delete optional)
-    await supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
+  // ✅ Update payment status
 
-    // insert new
-    const { error } = await supabase
-      .from('invoice_items')
-      .insert(toInvoiceItems(items, invoiceId));
-
-    if (error) throw error;
-
-    return true;
-  },
-
-  // ✅ Mark as paid
-  async markAsPaid(id, paymentMode) {
+  async updatePaymentStatus(
+    id,
+    paymentStatus,
+    paymentMode = null,
+  ) {
     const { data, error } = await supabase
-      .from('invoices')
+      .from('invoice')
       .update({
-        status: 'PAID',
+        payment_status: paymentStatus,
         payment_mode: paymentMode,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id)
       .select()
@@ -160,15 +170,62 @@ export const invoiceService = {
     return mapInvoice(data);
   },
 
-  // ✅ Soft delete
+  // ✅ Mark Paid Shortcut
+
+  async markAsPaid(id, paymentMode) {
+    return this.updatePaymentStatus(
+      id,
+      'PAID',
+      paymentMode,
+    );
+  },
+
+  // ✅ Soft Delete
+
   async remove(id) {
     const { error } = await supabase
-      .from('invoices')
-      .update({ is_deleted: true })
+      .from('invoice')
+      .update({
+        is_deleted: true,
+      })
       .eq('id', id);
 
     if (error) throw error;
 
     return true;
+  },
+
+  // ✅ Get Product Invoices
+
+  async getProductInvoices() {
+    const { data, error } = await supabase
+      .from('invoice')
+      .select('*')
+      .eq('invoice_type', 'PRODUCT')
+      .eq('is_deleted', false)
+      .order('created_at', {
+        ascending: false,
+      });
+
+    if (error) throw error;
+
+    return data.map(mapInvoice);
+  },
+
+  // ✅ Get Labour Invoices
+
+  async getLabourInvoices() {
+    const { data, error } = await supabase
+      .from('invoice')
+      .select('*')
+      .eq('invoice_type', 'LABOUR')
+      .eq('is_deleted', false)
+      .order('created_at', {
+        ascending: false,
+      });
+
+    if (error) throw error;
+
+    return data.map(mapInvoice);
   },
 };

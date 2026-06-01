@@ -233,7 +233,7 @@ export default function CustomerForm({ navigation, route }) {
                   clearError('address');
                 }}
                 multiline
-                numberOfLines={4}
+                numberOfLines={2}
                 textAlignVertical="top"
                 returnKeyType="done"
               />
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 34,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#111',
   },
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   },
 
   heading: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#111',
   },
@@ -349,11 +349,11 @@ const styles = StyleSheet.create({
   description: {
     color: '#6b7280',
     marginTop: 6,
-    fontSize: 15,
+    fontSize: 12,
   },
 
   label: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     marginBottom: 6,
     color: '#111',
@@ -385,8 +385,8 @@ const styles = StyleSheet.create({
 
   textInput: {
     flex: 1,
-    fontSize: 18,
-    paddingVertical: 16,
+    fontSize: 15,
+    paddingVertical: 12,
     color: '#111',
   },
 
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
 
   addressInput: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 15,
     color: '#111',
     lineHeight: 26,
   },
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     marginBottom: 10,
     marginLeft: 6,
-    fontSize: 13,
+    fontSize: 12,
   },
 
   button: {

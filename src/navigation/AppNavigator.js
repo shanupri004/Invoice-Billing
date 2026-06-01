@@ -10,6 +10,7 @@ import CustomerForm from '../screens/CreateCustomer';
 import InvoicePreview from '../screens/InvoicePreview';
 import CustomerList from '../screens/CustomerList';
 import InvoiceForm from '../screens/InvoiceForm';
+import InvoiceListScreen from '../screens/InvoiceListScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -52,6 +53,7 @@ export default function AppNavigator() {
         <Stack.Screen name="CreateCustomer" component={CustomerForm} />
         <Stack.Screen name="InvoiceForm" component={InvoiceForm} />
         <Stack.Screen name="previewInvoice" component={InvoicePreview} />
+        <Stack.Screen name="InvoiceList" component={InvoiceListScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

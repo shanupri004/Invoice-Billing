@@ -18,7 +18,7 @@ export default function ConfirmModal({
         <View style={styles.card}>
           {/* Icon */}
           <View style={styles.iconCircle}>
-            <AlertTriangle size={38} color="#ef4444" />
+            <AlertTriangle size={30} color="#ef4444" />
           </View>
 
           {/* Title */}
@@ -71,9 +71,9 @@ const styles = StyleSheet.create({
   },
 
   iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#fee2e2',
     alignItems: 'center',
     justifyContent: 'center',
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 26, // larger title
+    fontSize: 20, // larger title
     fontWeight: '700',
     marginBottom: 10,
     textAlign: 'center',
@@ -90,8 +90,8 @@ const styles = StyleSheet.create({
   message: {
     textAlign: 'center',
     color: '#6b7280',
-    fontSize: 18, // larger message
-    lineHeight: 26,
+    fontSize: 16, // larger message
+    lineHeight: 24,
     marginBottom: 26,
   },
 
@@ -117,13 +117,13 @@ const styles = StyleSheet.create({
   },
 
   cancelText: {
-    fontSize: 25, // larger button text
+    fontSize: 16, // larger button text
     color: '#374151',
     fontWeight: '600',
   },
 
   confirmText: {
-    fontSize: 25,
+    fontSize: 16,
     fontWeight: '700',
   },
 });

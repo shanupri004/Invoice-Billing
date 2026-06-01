@@ -115,8 +115,11 @@ export default function LoginScreen({ navigation }) {
 
         {/* ── Footer ── */}
         <View style={styles.footerSection}>
-          <Text style={styles.footerLabel}>OFFLINE BILLING SYSTEM</Text>
+          <Text style={styles.footerLabel}>ONLINE BILLING SYSTEM</Text>
           <Text style={styles.footerVersion}>{APP_VERSION}</Text>
+          <Text style={[styles.footerVersion, { color: 'black' }]}>
+             Designed & Developed by Shanmugapriya Iyappan
+          </Text>
         </View>
       </View>
     </SafeAreaView>
