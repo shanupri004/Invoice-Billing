@@ -189,6 +189,16 @@ export default function Step4({ route, navigation }) {
     );
   };
 
+  const buildPdfFileName = () => {
+    const parts = [
+      invoiceData?.customer?.name,
+      invoiceData?.invoiceType,
+      "INVOICE",
+      invoiceData?.billNo,
+    ].filter(Boolean);
+    return parts.join('_');
+  };
+
   const handlePreviewPdf = async () => {
     if (!invoiceData) return;
     setPdfLoading(true);
@@ -203,8 +213,11 @@ export default function Step4({ route, navigation }) {
 
       const options = {
         html,
-        fileName: `invoice_${Date.now()}`,
-        directory: 'Documents', // Android: app-specific external files dir; iOS: app doc dir
+        fileName: buildPdfFileName(),
+        // No `directory` option: keeps the PDF in the app's cache/tmp dir,
+        // which react-native-share's FileProvider config actually exposes.
+        // 'Documents' saves outside that config and breaks Share with
+        // "Failed to find configured root" on Android.
         base64: false,
       };
 
@@ -215,7 +228,27 @@ export default function Step4({ route, navigation }) {
         throw new Error('PDF file path not generated.');
       }
 
-      setPdfFilePath(pdf.filePath.replace('file://', ''));
+      // react-native-html-to-pdf writes via File.createTempFile, which always
+      // inserts a random number into the name. Rename it in-place (same cache
+      // dir, so it stays under react-native-share's FileProvider config) to
+      // get the clean invoiceType_customerName_billNo.pdf name.
+      const rawPath = pdf.filePath.replace('file://', '');
+      const desiredPath = `${RNFS.CachesDirectoryPath}/${buildPdfFileName() || 'invoice'}.pdf`;
+
+      let finalPath = rawPath;
+      if (rawPath !== desiredPath) {
+        try {
+          if (await RNFS.exists(desiredPath)) {
+            await RNFS.unlink(desiredPath);
+          }
+          await RNFS.moveFile(rawPath, desiredPath);
+          finalPath = desiredPath;
+        } catch (renameError) {
+          console.warn('PDF rename failed, using original path:', renameError);
+        }
+      }
+
+      setPdfFilePath(finalPath);
       setPdfPreviewVisible(true);
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -273,7 +306,7 @@ export default function Step4({ route, navigation }) {
 
     setDownloading(true);
     try {
-      const fileName = `invoice_${invoiceData?.billNo || Date.now()}.pdf`;
+      const fileName = `${buildPdfFileName() || `invoice_${Date.now()}`}.pdf`;
 
       if (Platform.OS === 'android') {
         // Save to Downloads folder on Android
@@ -354,7 +387,7 @@ export default function Step4({ route, navigation }) {
         message: `Invoice ${invoiceData?.billNo || ''}`,
         url: `file://${pdfFilePath}`,
         type: 'application/pdf',
-        filename: 'invoice.pdf',
+        filename: `${buildPdfFileName() || 'invoice'}.pdf`,
         failOnCancel: false,
       });
     } catch (error) {
