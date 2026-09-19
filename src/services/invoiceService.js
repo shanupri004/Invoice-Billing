@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 
 const mapInvoice = row => ({
   id: row.id,
-  invoiceCode: row.invoice_code,
+  // invoiceCode: row.invoice_code,
   invoiceType: row.invoice_type,
   invoiceDate: row.invoice_date,
 
@@ -20,6 +20,7 @@ const mapInvoice = row => ({
   items: row.items || [],
 
   totalAmount: Number(row.total_amount),
+  billNo: row.bill_no,
 
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -37,21 +38,25 @@ const mapInvoice = row => ({
 // 🔹 App → DB Model
 // ─────────────────────────────────────────────
 
-const toInvoice = payload => ({
-  invoice_type: payload.invoiceType, // PRODUCT | LABOUR
-  invoice_date: payload.invoiceDate,
+const toInvoice = payload => {
+  console.log(payload, 'in service');
 
-  customer_id: payload.customerId,
+  return {
+    invoice_type: payload.invoiceType,
+    invoice_date: payload.invoiceDate,
+    customer_id: payload.customerId,
 
-  payment_status: payload.paymentStatus || 'PENDING',
-  payment_mode: payload.paymentMode || null,
+    payment_status: payload.paymentStatus || 'PENDING',
+    payment_mode: payload.paymentMode || null,
 
-  items: payload.items || [],
+    items: payload.items || [],
 
-  total_amount: payload.totalAmount,
+    total_amount: payload.totalAmount,
+    bill_no: payload.bill_no,
 
-  is_deleted: false,
-});
+    is_deleted: false,
+  };
+};
 
 // ─────────────────────────────────────────────
 // 🚀 Service

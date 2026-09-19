@@ -1,9 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { COLORS } from '../constants/Colors';
+import { useTranslation } from '../localization/LanguageContext';
+import Text from './AppText';
 
 export default function StepIndicator({ step }) {
-  const steps = ['Customer', 'Products', 'Summary'];
+  const { t } = useTranslation();
+  const steps = [
+    t('stepIndicator.customer'),
+    t('stepIndicator.products'),
+    t('stepIndicator.summary'),
+  ];
 
   return (
     <View style={styles.container}>

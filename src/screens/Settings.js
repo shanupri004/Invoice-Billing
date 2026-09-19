@@ -1,98 +1,158 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  Platform,
   ScrollView,
 } from 'react-native';
 import { COLORS } from '../constants/Colors';
-import { ChevronRight, LogOut, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, LogOut, Languages } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
 import BottomNav from '../components/BottomNav';
 import ConfirmModal from '../components/ConfirmModal';
+import { useTranslation } from '../localization/LanguageContext';
+import Text from '../components/AppText';
 
 export default function SettingScreen({ navigation }) {
-  const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+  const { t, language, setLanguage } = useTranslation();
   const [logoutModal, setLogoutModal] = useState(false);
+
   const handleLogout = async () => {
     setLogoutModal(false);
     await AsyncStorage.removeItem('auth');
     navigation.replace('Login');
   };
+
+  const languages = [
+    { code: 'en', label: 'English' },
+    { code: 'ta', label: 'தமிழ்' },
+    { code: 'te', label: 'తెలుగు' },
+    { code: 'ml', label: 'മലയാളം' },
+    { code: 'kn', label: 'ಕನ್ನಡ' },
+  ];
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Fixed Header */}
+
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={8}
+            style={styles.backButton}
+          >
+            <ChevronLeft size={26} color="#111" />
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('settings.title')}</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.section}>DATA MANAGEMENT</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Language */}
+          <Text style={styles.section}>
+            {t('settings.language')}
+          </Text>
 
           <View style={styles.card}>
-            <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowText}>Backup Data</Text>
-              <ChevronRight size={20} color="#999" />
-            </TouchableOpacity>
+            <View style={styles.languageHeader}>
+              <View style={styles.iconContainer}>
+                <Languages size={20} color="#333" />
+              </View>
 
-            <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowText}>Export Invoices (.JSON)</Text>
-              <ChevronRight size={20} color="#999" />
-            </TouchableOpacity>
+              <View style={styles.languageHeaderText}>
+                <Text style={styles.rowText}>
+                  {t('settings.appLanguage')}
+                </Text>
 
-            <TouchableOpacity style={styles.row}>
-              <Text style={styles.rowText}>Restore Backup</Text>
-              <ChevronRight size={20} color="#999" />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.section}>SYSTEM MAINTENANCE</Text>
-
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.row}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Trash2 size={18} color="red" />
-                <Text style={[styles.rowText, { color: 'red', marginLeft: 8 }]}>
-                  Delete All Reports
+                <Text style={styles.selectedLanguage}>
+                  {languages.find(item => item.code === language)?.label}
                 </Text>
               </View>
-              <ChevronRight size={20} color="#999" />
-            </TouchableOpacity>
+            </View>
 
+            <View style={styles.languageList}>
+              {languages.map(item => {
+                const isActive = language === item.code;
+
+                return (
+                  <TouchableOpacity
+                    key={item.code}
+                    style={[
+                      styles.languageOption,
+                      isActive && styles.languageOptionActive,
+                    ]}
+                    onPress={() => setLanguage(item.code)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.languageOptionText,
+                        isActive && styles.languageOptionTextActive,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+
+                    {isActive && (
+                      <View style={styles.activeIndicator} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Logout */}
+          <Text style={styles.section}>
+            {t('settings.systemMaintenance')}
+          </Text>
+
+          <View style={styles.card}>
             <TouchableOpacity
               style={styles.row}
               onPress={() => setLogoutModal(true)}
+              activeOpacity={0.7}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <LogOut size={18} color="#333" />
-                <Text style={[styles.rowText, { marginLeft: 8 }]}>Logout</Text>
+              <View style={styles.rowLeft}>
+                <View style={styles.iconContainer}>
+                  <LogOut size={19} color="#333" />
+                </View>
+
+                <Text style={styles.rowText}>
+                  {t('settings.logout')}
+                </Text>
               </View>
+
               <ChevronRight size={20} color="#999" />
             </TouchableOpacity>
           </View>
+
+          {/* Logout Confirmation */}
           <ConfirmModal
             visible={logoutModal}
-            title="Are you sure?"
-            message="You will be logged out of the system."
-            confirmText="Logout"
-            cancelText="Cancel"
+            title={t('settings.logoutConfirmTitle')}
+            message={t('settings.logoutConfirmMessage')}
+            confirmText={t('settings.logout')}
+            cancelText={t('common.cancel')}
             danger={true}
             onCancel={() => setLogoutModal(false)}
             onConfirm={handleLogout}
           />
 
           <Text style={styles.footer}>
-            Aadhi Engine Service v2.4.0 (Build 2024)
+            {t('settings.footer')}
           </Text>
         </ScrollView>
 
         {/* Bottom Navigation */}
-        <BottomNav navigation={navigation} active="Settings" />
+        <BottomNav
+          navigation={navigation}
+          active="Settings"
+        />
       </View>
     </SafeAreaView>
   );
@@ -104,27 +164,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f6fb',
   },
 
+  container: {
+    flex: 1,
+    backgroundColor: '#f4f6fb',
+    paddingHorizontal: 24,
+  },
+
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
     backgroundColor: '#f4f6fb',
     borderBottomWidth: 1,
     borderColor: '#e5e7eb',
   },
 
-  container: {
-    flex: 1,
-    backgroundColor: '#f4f6fb',
-    paddingLeft: 24,
-    paddingRight: 24,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    elevation: 2,
   },
 
   title: {
-    fontSize: 36, // bigger title
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 24,
+  },
+
+  scrollContent: {
+    paddingBottom: 30,
   },
 
   section: {
-    fontSize: 16, // bigger section label
+    fontSize: 15,
     fontWeight: '700',
     color: '#6b7280',
     marginTop: 24,
@@ -139,25 +215,91 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  row: {
+  languageHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 22, // bigger touch area
     paddingHorizontal: 20,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderColor: '#f1f1f1',
   },
 
+  languageHeaderText: {
+    marginLeft: 12,
+  },
+
+  selectedLanguage: {
+    marginTop: 3,
+    fontSize: 14,
+    color: '#6b7280',
+  },
+
+  languageList: {
+    padding: 8,
+  },
+
+  languageOption: {
+    minHeight: 48,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+
+  languageOptionActive: {
+    backgroundColor: COLORS.primary,
+  },
+
+  languageOptionText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#374151',
+  },
+
+  languageOptionTextActive: {
+    color: '#fff',
+  },
+
+  activeIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+  },
+
+  row: {
+    minHeight: 68,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
   rowText: {
-    fontSize: 20, // large readable text
+    fontSize: 19,
     fontWeight: '600',
     color: '#111',
   },
 
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   footer: {
     textAlign: 'center',
-    marginTop: 50,
+    marginTop: 40,
     color: '#9ca3af',
     fontSize: 14,
   },

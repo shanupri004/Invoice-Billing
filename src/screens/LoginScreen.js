@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
@@ -11,10 +10,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../constants/Colors';
 import Logo from '../assets/svg/Logo.svg';
 import { LoginService } from '../services/Login';
+import { useTranslation } from '../localization/LanguageContext';
+import Text from '../components/AppText';
 
-const APP_VERSION = 'v2.4.0';
+const APP_VERSION = 'v1.0.0';
 
 export default function LoginScreen({ navigation }) {
+  const { t } = useTranslation();
   const [pin, setPin] = useState('');
 
   const handlePress = num => {
@@ -33,11 +35,11 @@ export default function LoginScreen({ navigation }) {
       if (res.success) {
         navigation.replace('Dashboard');
       } else {
-        Alert.alert('Error', res.message);
+        Alert.alert(t('common.error'), t('login.wrongPin'));
         setPin('');
       }
     } catch (err) {
-      Alert.alert('Error', 'Something went wrong');
+      Alert.alert(t('common.error'), t('login.somethingWrong'));
     }
   };
 
@@ -63,7 +65,7 @@ export default function LoginScreen({ navigation }) {
       style={styles.key}
       onPress={onPress}
       activeOpacity={0.7}
-      accessibilityLabel={`Key ${label}`}
+      accessibilityLabel={t('login.keyLabel', { label })}
     >
       <Text style={styles.keyText}>{label}</Text>
     </TouchableOpacity>
@@ -77,16 +79,14 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.logoContainer}>
             <Logo style={styles.logoSvg} />
           </View>
-          <Text style={styles.company}>Aadhi Engine Services</Text>
+          <Text style={styles.company}>{t('login.companyName')}</Text>
           <View style={styles.divider} />
         </View>
 
         {/* ── PIN Section ── */}
         <View style={styles.pinSection}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>
-            Enter your 4-digit PIN to continue
-          </Text>
+          <Text style={styles.title}>{t('login.welcomeBack')}</Text>
+          <Text style={styles.subtitle}>{t('login.enterPin')}</Text>
           {renderDots()}
         </View>
 
@@ -106,7 +106,7 @@ export default function LoginScreen({ navigation }) {
               style={styles.key}
               onPress={handleDelete}
               activeOpacity={0.7}
-              accessibilityLabel="Delete"
+              accessibilityLabel={t('login.deleteKey')}
             >
               <Text style={styles.keyText}>⌫</Text>
             </TouchableOpacity>
@@ -115,10 +115,10 @@ export default function LoginScreen({ navigation }) {
 
         {/* ── Footer ── */}
         <View style={styles.footerSection}>
-          <Text style={styles.footerLabel}>ONLINE BILLING SYSTEM</Text>
+          <Text style={styles.footerLabel}>{t('login.onlineBillingSystem')}</Text>
           <Text style={styles.footerVersion}>{APP_VERSION}</Text>
           <Text style={[styles.footerVersion, { color: 'black' }]}>
-             Designed & Developed by Shanmugapriya Iyappan
+            {t('login.designedBy')}
           </Text>
         </View>
       </View>

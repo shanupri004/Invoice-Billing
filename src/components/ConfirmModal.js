@@ -1,17 +1,22 @@
 import React from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Modal, View, StyleSheet, TouchableOpacity } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
+import { useTranslation } from '../localization/LanguageContext';
+import Text from './AppText';
 
 export default function ConfirmModal({
   visible,
   title,
   message,
-  confirmText = 'Delete',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   onConfirm,
   onCancel,
   danger = false,
 }) {
+  const { t } = useTranslation();
+  const resolvedConfirmText = confirmText ?? t('common.delete');
+  const resolvedCancelText = cancelText ?? t('common.cancel');
   return (
     <Modal transparent visible={visible} animationType="fade">
       <View style={styles.overlay}>
@@ -35,7 +40,7 @@ export default function ConfirmModal({
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
               <Text allowFontScaling style={styles.cancelText}>
-                {cancelText}
+                {resolvedCancelText}
               </Text>
             </TouchableOpacity>
 
@@ -44,7 +49,7 @@ export default function ConfirmModal({
                 allowFontScaling
                 style={[styles.confirmText, danger && { color: '#ef4444' }]}
               >
-                {confirmText}
+                {resolvedConfirmText}
               </Text>
             </TouchableOpacity>
           </View>

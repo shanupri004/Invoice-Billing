@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -25,10 +24,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/Colors';
 import ConfirmModal from '../components/ConfirmModal';
 import { customerService } from '../services/Customer';
+import { useTranslation } from '../localization/LanguageContext';
+import Text from '../components/AppText';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CustomerListScreen({ navigation }) {
+  const { t } = useTranslation();
   const [customers, setCustomers] = useState([]);
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -53,7 +55,7 @@ export default function CustomerListScreen({ navigation }) {
       setCustomers(data);
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
@@ -84,7 +86,7 @@ export default function CustomerListScreen({ navigation }) {
       fetchCustomers(); // refresh after delete
       setDeleteTarget(null);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
@@ -152,12 +154,12 @@ export default function CustomerListScreen({ navigation }) {
     <View style={styles.emptyContainer}>
       <User size={52} color="#d1d5db" />
       <Text style={styles.emptyTitle}>
-        {query ? 'No results found' : 'No customers yet'}
+        {query ? t('customerList.noResultsFound') : t('customerList.noCustomersYet')}
       </Text>
       <Text style={styles.emptySubtitle}>
         {query
-          ? `Nothing matched "${query}"`
-          : 'Tap + to add your first customer'}
+          ? t('customerList.nothingMatched', { query })
+          : t('customerList.tapToAdd')}
       </Text>
     </View>
   );
@@ -176,9 +178,10 @@ export default function CustomerListScreen({ navigation }) {
           </TouchableOpacity>
 
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={styles.title}>Customers</Text>
+            <Text style={styles.title}>{t('customerList.title')}</Text>
             <Text style={styles.subtitle}>
-              {customers.length} {customers.length <= 1 ? 'record' : 'records'}
+              {customers.length}{' '}
+              {customers.length <= 1 ? t('customerList.record') : t('customerList.records')}
             </Text>
           </View>
 
@@ -195,7 +198,7 @@ export default function CustomerListScreen({ navigation }) {
         <View style={styles.searchContainer}>
           <Search size={20} color="#9ca3af" style={{ marginRight: 10 }} />
           <TextInput
-            placeholder="Search by name, mobile or address"
+            placeholder={t('customerList.searchPlaceholder')}
             placeholderTextColor="#aaa"
             style={styles.searchInput}
             value={query}
@@ -213,8 +216,14 @@ export default function CustomerListScreen({ navigation }) {
         {/* Count badge when filtering */}
         {query.length > 0 && (
           <Text style={styles.resultCount}>
-            {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "
-            {query}"
+            {t('customerList.resultsFor', {
+              count: filtered.length,
+              resultWord:
+                filtered.length !== 1
+                  ? t('customerList.results')
+                  : t('customerList.result'),
+              query,
+            })}
           </Text>
         )}
 
@@ -239,10 +248,10 @@ export default function CustomerListScreen({ navigation }) {
       {/* Delete confirmation modal */}
       <ConfirmModal
         visible={!!deleteTarget}
-        title="Delete Customer?"
-        message={`"${deleteTarget?.name}" will be permanently removed. This cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
+        title={t('customerList.deleteCustomerTitle')}
+        message={t('customerList.deleteCustomerMessage', { name: deleteTarget?.name })}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
         danger={true}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDelete}

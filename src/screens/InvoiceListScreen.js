@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -14,11 +15,13 @@ import {
   Platform,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { Plus, Search, User, Filter, Calendar, X } from 'lucide-react-native';
+import { Plus, Search, User, Filter, Calendar, X, FileText } from 'lucide-react-native';
 import { invoiceService } from '../services/invoiceService';
 import BottomNav from '../components/BottomNav';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {COLORS} from '../constants/Colors';
+import { useTranslation } from '../localization/LanguageContext';
+import { NoFontScale } from '../components/AppText';
 
 const SkeletonCard = () => (
   <View style={styles.skeletonCard}>
@@ -42,6 +45,17 @@ const SkeletonCard = () => (
 );
 
 const InvoiceListScreen = ({ navigation }) => {
+  const { t } = useTranslation();
+  const statusFilterLabels = {
+    ALL: t('invoiceList.all'),
+    PAID: t('common.paid'),
+    PENDING: t('common.pending'),
+  };
+  const typeFilterLabels = {
+    ALL: t('invoiceList.all'),
+    PRODUCT: t('invoiceList.product'),
+    LABOUR: t('invoiceList.labour'),
+  };
   const [invoices, setInvoices] = useState([]);
   const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,9 +87,11 @@ const InvoiceListScreen = ({ navigation }) => {
     }
   };
 
-  useEffect(() => {
-    loadInvoices();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadInvoices();
+    }, [])
+  );
 
   useEffect(() => {
     let data = [...invoices];
@@ -113,12 +129,12 @@ const InvoiceListScreen = ({ navigation }) => {
     if (search.trim()) {
       const searchLower = search.toLowerCase();
       data = data.filter(item => {
-        const matchesInvoiceCode = item.invoiceCode?.toLowerCase().includes(searchLower);
+        // const matchesInvoiceCode = item.invoiceCode?.toLowerCase().includes(searchLower);
         const matchesCustomerId = String(item.customerId).toLowerCase().includes(searchLower);
         const matchesCustomerName = item.customer?.name?.toLowerCase().includes(searchLower);
         const matchesMobile = item.customer?.mobile?.toString().includes(searchLower);
         
-        return matchesInvoiceCode || matchesCustomerId || matchesCustomerName || matchesMobile;
+        return matchesCustomerId || matchesCustomerName || matchesMobile;
       });
     }
 
@@ -180,7 +196,9 @@ const InvoiceListScreen = ({ navigation }) => {
         <View style={styles.cardHeader}>
           <View style={{ flex: 1 }}>
             <View style={styles.codeRow}>
-              <Text style={styles.invoiceCode}>{item.invoiceCode}</Text>
+              <Text style={styles.invoiceCode}>
+                {t('invoiceList.billNoPrefix', { no: item.billNo })}
+              </Text>
               <View
                 style={[
                   styles.badge,
@@ -197,11 +215,13 @@ const InvoiceListScreen = ({ navigation }) => {
                       : styles.pendingText,
                   ]}
                 >
-                  {item.paymentStatus}
+                  {item.paymentStatus === 'PAID' ? t('common.paid') : t('common.pending')}
                 </Text>
               </View>
               <View style={styles.typeBadge}>
-                <Text style={styles.typeBadgeText}>{item.invoiceType}</Text>
+                <Text style={styles.typeBadgeText}>
+                  {item.invoiceType === 'LABOUR' ? t('invoiceList.labour') : t('invoiceList.product')}
+                </Text>
               </View>
             </View>
 
@@ -215,9 +235,9 @@ const InvoiceListScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.amountPill}>
-            <Text style={styles.amountLabel}>Total</Text>
+            <Text style={styles.amountLabel}>{t('invoiceList.total')}</Text>
             <Text style={styles.amountText}>
-              ₹{Number(grandTotal).toFixed(2)}
+              ₹{Number(item?.totalAmount).toFixed(2)}
             </Text>
           </View>
         </View>
@@ -229,7 +249,7 @@ const InvoiceListScreen = ({ navigation }) => {
 
           <View style={{ flex: 1 }}>
             <Text style={styles.customerName} numberOfLines={1}>
-              {item.customer?.name || 'Unknown Customer'}
+              {item.customer?.name || t('invoiceList.unknownCustomer')}
             </Text>
             <Text style={styles.mobileText} numberOfLines={1}>
               {item.customer?.mobile || '-'}
@@ -238,17 +258,22 @@ const InvoiceListScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.itemPreview}>
-          <Text style={styles.itemPreviewTitle}>Items</Text>
+          <Text style={styles.itemPreviewTitle}>{t('invoiceList.items')}</Text>
           <Text style={styles.itemPreviewValue}>
-            {item.items?.length || 0} item
-            {(item.items?.length || 0) !== 1 ? 's' : ''}
+            {t('invoiceList.itemCount', {
+              count: item.items?.length || 0,
+              itemWord:
+                (item.items?.length || 0) !== 1
+                  ? t('invoiceList.itemsWord')
+                  : t('invoiceList.item'),
+            })}
           </Text>
         </View>
 
         <View style={styles.divider} />
 
         <View style={styles.bottomRow}>
-          <Text style={styles.bottomHint}>Tap to view invoice details</Text>
+          <Text style={styles.bottomHint}>{t('invoiceList.tapToView')}</Text>
           <Text style={styles.arrowText}>›</Text>
         </View>
       </TouchableOpacity>
@@ -257,19 +282,19 @@ const InvoiceListScreen = ({ navigation }) => {
 
   const EmptyComponent = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="receipt-outline" size={80} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>No Invoices Found</Text>
+      <FileText  size={80} color="#D1D5DB" />
+      <Text style={styles.emptyTitle}>{t('invoiceList.noInvoicesFound')}</Text>
       <Text style={styles.emptySubtitle}>
         {invoices.length === 0
-          ? 'Create your first invoice to get started.'
-          : 'Try adjusting your filters or search query.'}
+          ? t('invoiceList.createFirst')
+          : t('invoiceList.adjustFilters')}
       </Text>
       {invoices.length > 0 && (
         <TouchableOpacity
           style={styles.clearFiltersButton}
           onPress={handleClearFilters}
         >
-          <Text style={styles.clearFiltersText}>Clear All Filters</Text>
+          <Text style={styles.clearFiltersText}>{t('invoiceList.clearAllFilters')}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -294,7 +319,9 @@ const InvoiceListScreen = ({ navigation }) => {
           contentContainerStyle={{ paddingBottom: 120 }}
         />
 
-        <BottomNav navigation={navigation} active="Invoices" />
+        <NoFontScale>
+          <BottomNav navigation={navigation} active="Invoices" />
+        </NoFontScale>
 
         <TouchableOpacity
           style={styles.fab}
@@ -312,7 +339,7 @@ const InvoiceListScreen = ({ navigation }) => {
       <View style={styles.searchContainer}>
         <Search size={20} color="#6B7280" />
         <TextInput
-          placeholder="Search by code, customer, or mobile..."
+          placeholder={t('invoiceList.searchPlaceholder')}
           value={search}
           onChangeText={setSearch}
           style={styles.searchInput}
@@ -332,7 +359,7 @@ const InvoiceListScreen = ({ navigation }) => {
           onPress={() => setShowFilterModal(true)}
         >
           <Filter size={18} color={COLORS.primary} />
-          <Text style={styles.filterButtonText}>Filters</Text>
+          <Text style={styles.filterButtonText}>{t('invoiceList.filters')}</Text>
           {(statusFilter !== 'ALL' || invoiceTypeFilter !== 'ALL' || dateRangeFilter.startDate || dateRangeFilter.endDate) && (
             <View style={styles.filterBadge}>
               <Text style={styles.filterBadgeText}>•</Text>
@@ -364,7 +391,9 @@ const InvoiceListScreen = ({ navigation }) => {
       </TouchableOpacity>
 
       {/* Bottom Navigation */}
-      <BottomNav navigation={navigation} active="Invoices" />
+      <NoFontScale>
+        <BottomNav navigation={navigation} active="Invoices" />
+      </NoFontScale>
 
       {/* Filter Modal */}
       <Modal
@@ -378,7 +407,7 @@ const InvoiceListScreen = ({ navigation }) => {
             <TouchableWithoutFeedback>
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Filters</Text>
+                  <Text style={styles.modalTitle}>{t('invoiceList.filters')}</Text>
                   <TouchableOpacity onPress={() => setShowFilterModal(false)}>
                     <X size={24} color="#374151" />
                   </TouchableOpacity>
@@ -387,7 +416,7 @@ const InvoiceListScreen = ({ navigation }) => {
                 <ScrollView style={styles.modalBody}>
                   {/* Payment Status */}
                   <View style={styles.filterSection}>
-                    <Text style={styles.filterSectionTitle}>Payment Status</Text>
+                    <Text style={styles.filterSectionTitle}>{t('invoiceList.paymentStatus')}</Text>
                     <View style={styles.filterOptions}>
                       {['ALL', 'PAID', 'PENDING'].map(status => (
                         <TouchableOpacity
@@ -404,7 +433,7 @@ const InvoiceListScreen = ({ navigation }) => {
                               statusFilter === status && styles.activeFilterOptionText,
                             ]}
                           >
-                            {status}
+                            {statusFilterLabels[status]}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -413,9 +442,9 @@ const InvoiceListScreen = ({ navigation }) => {
 
                   {/* Invoice Type */}
                   <View style={styles.filterSection}>
-                    <Text style={styles.filterSectionTitle}>Invoice Type</Text>
+                    <Text style={styles.filterSectionTitle}>{t('invoiceList.invoiceType')}</Text>
                     <View style={styles.filterOptions}>
-                      {['ALL', 'PRODUCT', 'SERVICE'].map(type => (
+                      {['ALL', 'PRODUCT', 'LABOUR'].map(type => (
                         <TouchableOpacity
                           key={type}
                           onPress={() => setInvoiceTypeFilter(type)}
@@ -430,7 +459,7 @@ const InvoiceListScreen = ({ navigation }) => {
                               invoiceTypeFilter === type && styles.activeFilterOptionText,
                             ]}
                           >
-                            {type}
+                            {typeFilterLabels[type]}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -439,7 +468,7 @@ const InvoiceListScreen = ({ navigation }) => {
 
                   {/* Date Range */}
                   <View style={styles.filterSection}>
-                    <Text style={styles.filterSectionTitle}>Date Range</Text>
+                    <Text style={styles.filterSectionTitle}>{t('invoiceList.dateRange')}</Text>
                     
                     {/* Start Date */}
                     <View style={styles.dateInput}>
@@ -498,13 +527,13 @@ const InvoiceListScreen = ({ navigation }) => {
                     style={styles.clearButton}
                     onPress={handleClearFilters}
                   >
-                    <Text style={styles.clearButtonText}>Clear All</Text>
+                    <Text style={styles.clearButtonText}>{t('invoiceList.clearAll')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.applyButton}
                     onPress={handleApplyDateFilter}
                   >
-                    <Text style={styles.applyButtonText}>Apply Filters</Text>
+                    <Text style={styles.applyButtonText}>{t('invoiceList.applyFilters')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -799,7 +828,7 @@ const styles = StyleSheet.create({
 
   fab: {
     position: 'absolute',
-    bottom: 90,
+    bottom: 100,
     right: 20,
     width: 60,
     height: 60,

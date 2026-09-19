@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -23,8 +22,11 @@ import {
 import { COLORS } from '../constants/Colors';
 import ConfirmModal from '../components/ConfirmModal';
 import { customerService } from '../services/Customer';
+import { useTranslation } from '../localization/LanguageContext';
+import Text from '../components/AppText';
 
 export default function CustomerForm({ navigation, route }) {
+  const { t } = useTranslation();
   // ── Detect mode ────────────────────────────────────────────────────────────
   const existingCustomer = route?.params?.customer ?? null;
   const isEditMode = !!existingCustomer;
@@ -44,12 +46,12 @@ export default function CustomerForm({ navigation, route }) {
   const validate = () => {
     const newErrors = {};
 
-    if (!name.trim()) newErrors.name = 'Customer name is required';
+    if (!name.trim()) newErrors.name = t('createCustomer.nameRequired');
 
     if (mobile && mobile.length !== 10)
-      newErrors.mobile = 'Mobile number must be 10 digits';
+      newErrors.mobile = t('createCustomer.mobileDigits');
 
-    if (!address.trim()) newErrors.address = 'Address is required';
+    if (!address.trim()) newErrors.address = t('createCustomer.addressRequired');
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -81,7 +83,7 @@ export default function CustomerForm({ navigation, route }) {
       navigation.navigate('customer'); // ✅ navigate after success
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     } finally {
       setLoading(false); // ✅ STOP loading
     }
@@ -95,7 +97,7 @@ export default function CustomerForm({ navigation, route }) {
       setDeleteModal(false);
       navigation.navigate('customer');
     } catch (err) {
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
@@ -124,9 +126,9 @@ export default function CustomerForm({ navigation, route }) {
 
             <View style={{ marginLeft: 10, flex: 1 }}>
               <Text style={styles.title}>
-                {isEditMode ? 'Edit Customer' : 'Add Customer'}
+                {isEditMode ? t('createCustomer.editTitle') : t('createCustomer.addTitle')}
               </Text>
-              <Text style={styles.subtitle}>Aadhi Engine Service</Text>
+              <Text style={styles.subtitle}>{t('createCustomer.subtitle')}</Text>
             </View>
 
             {/* Delete icon — only in edit mode */}
@@ -152,22 +154,22 @@ export default function CustomerForm({ navigation, route }) {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.headingBlock}>
-              <Text style={styles.heading}>Customer Details</Text>
+              <Text style={styles.heading}>{t('createCustomer.heading')}</Text>
               <Text style={styles.description}>
                 {isEditMode
-                  ? 'Update the customer information below'
-                  : 'Fill in the details below to add a new customer'}
+                  ? t('createCustomer.descriptionEdit')
+                  : t('createCustomer.descriptionAdd')}
               </Text>
             </View>
 
             {/* Name */}
-            <Text style={styles.label}>Customer Name</Text>
+            <Text style={styles.label}>{t('createCustomer.customerName')}</Text>
             <View
               style={[styles.inputContainer, errors.name && styles.errorBorder]}
             >
               <User size={22} color={COLORS.secondary} style={styles.icon} />
               <TextInput
-                placeholder="Enter full name"
+                placeholder={t('createCustomer.enterFullName')}
                 placeholderTextColor="#aaa"
                 style={styles.textInput}
                 value={name}
@@ -183,7 +185,8 @@ export default function CustomerForm({ navigation, route }) {
 
             {/* Phone */}
             <Text style={styles.label}>
-              Mobile Number <Text style={styles.optional}>(Optional)</Text>
+              {t('createCustomer.mobileNumber')}{' '}
+              <Text style={styles.optional}>{t('createCustomer.optional')}</Text>
             </Text>
             <View
               style={[
@@ -193,7 +196,7 @@ export default function CustomerForm({ navigation, route }) {
             >
               <Phone size={22} color={COLORS.secondary} style={styles.icon} />
               <TextInput
-                placeholder="Enter 10-digit number"
+                placeholder={t('createCustomer.enter10Digit')}
                 placeholderTextColor="#aaa"
                 keyboardType="phone-pad"
                 maxLength={10}
@@ -211,7 +214,7 @@ export default function CustomerForm({ navigation, route }) {
             )}
 
             {/* Address */}
-            <Text style={styles.label}>Address</Text>
+            <Text style={styles.label}>{t('createCustomer.address')}</Text>
             <View
               style={[
                 styles.addressContainer,
@@ -224,7 +227,7 @@ export default function CustomerForm({ navigation, route }) {
                 style={styles.addressIcon}
               />
               <TextInput
-                placeholder="Enter street, city, state..."
+                placeholder={t('createCustomer.enterAddress')}
                 placeholderTextColor="#aaa"
                 style={styles.addressInput}
                 value={address}
@@ -253,12 +256,12 @@ export default function CustomerForm({ navigation, route }) {
                 {loading ? (
                   <Text style={styles.buttonText}>
                     {' '}
-                    {isEditMode ? 'Updating....' : 'Saving....'}.
+                    {isEditMode ? t('createCustomer.updating') : t('createCustomer.saving')}
                   </Text>
                 ) : (
                   <>
                     <Text style={styles.buttonText}>
-                      {isEditMode ? 'Update Customer' : 'Save Customer'}
+                      {isEditMode ? t('createCustomer.updateCustomer') : t('createCustomer.saveCustomer')}
                     </Text>
                     <ChevronRight size={20} color="#fff" />
                   </>
@@ -272,10 +275,10 @@ export default function CustomerForm({ navigation, route }) {
       {/* Discard modal */}
       <ConfirmModal
         visible={discardModal}
-        title="Discard Changes?"
-        message="Your changes will not be saved. Do you want to exit?"
-        confirmText="Discard"
-        cancelText="Keep Editing"
+        title={t('createCustomer.discardTitle')}
+        message={t('createCustomer.discardMessage')}
+        confirmText={t('createCustomer.discard')}
+        cancelText={t('createCustomer.keepEditing')}
         danger={true}
         onCancel={() => setDiscardModal(false)}
         onConfirm={handleDiscard}
@@ -284,10 +287,10 @@ export default function CustomerForm({ navigation, route }) {
       {/* Delete modal — edit mode only */}
       <ConfirmModal
         visible={deleteModal}
-        title="Delete Customer?"
-        message={`"${name}" will be permanently removed. This cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
+        title={t('createCustomer.deleteCustomerTitle')}
+        message={t('createCustomer.deleteCustomerMessage', { name })}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
         danger={true}
         onCancel={() => setDeleteModal(false)}
         onConfirm={handleDelete}

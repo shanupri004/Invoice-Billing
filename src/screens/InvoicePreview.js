@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   Platform,
@@ -9,8 +8,13 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   Alert,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
+import { generatePDF } from 'react-native-html-to-pdf';
+import { buildInvoiceHtml } from '../utils/invoiceHtml';
 import {
   ChevronLeft,
   Share2,
@@ -21,11 +25,21 @@ import {
   CalendarDays,
   ReceiptText,
   Pencil,
+  Download,
   Trash2,
+  X,
 } from 'lucide-react-native';
+import { Switch } from 'react-native';
+import Share from 'react-native-share';
+import RNFS from 'react-native-fs';
+import Pdf from 'react-native-pdf';
+import RNPrint from 'react-native-print';
+
 import { COLORS } from '../constants/Colors';
 import { numberToIndianWords } from '../utils/numberToIndianWords';
 import { invoiceService } from '../services/invoiceService';
+import { useTranslation } from '../localization/LanguageContext';
+import Text from '../components/AppText';
 
 const SkeletonLine = ({ style }) => (
   <View style={[styles.skeletonLine, style]} />
@@ -37,7 +51,7 @@ const SkeletonCard = () => (
       <SkeletonLine style={{ width: '80%', height: 28, marginBottom: 8 }} />
       <SkeletonLine style={{ width: '90%', height: 16 }} />
     </View>
-    
+
     <View style={styles.skeletonInfoGrid}>
       <View style={{ flex: 1.2 }}>
         <SkeletonLine style={{ width: '90%', height: 14, marginBottom: 6 }} />
@@ -73,7 +87,7 @@ const SkeletonItemsCard = () => (
       <SkeletonLine style={{ flex: 1.5, height: 18 }} />
       <SkeletonLine style={{ flex: 1.5, height: 18 }} />
     </View>
-    
+
     {[1, 2, 3].map((_, idx) => (
       <View style={styles.skeletonTableRow} key={idx}>
         <SkeletonLine style={{ flex: 0.8, height: 16, marginBottom: 0 }} />
@@ -99,10 +113,25 @@ const SkeletonTotalCard = () => (
 );
 
 export default function Step4({ route, navigation }) {
+  const { t } = useTranslation();
+  const paymentModeLabels = {
+    Cash: t('common.cash'),
+    UPI: t('common.upi'),
+    Card: t('common.card'),
+    'Net Banking': t('common.netBanking'),
+  };
   // ALL useState hooks must be at the TOP, before any useEffect
   const [invoiceData, setInvoiceData] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfPreviewVisible, setPdfPreviewVisible] = useState(false);
+  const [pdfBase64, setPdfBase64] = useState(null);
+  const [pdfFilePath, setPdfFilePath] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState('Cash');
+  const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [sign, setSign] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   useEffect(() => {
     loadInvoice();
   }, []);
@@ -122,7 +151,9 @@ export default function Step4({ route, navigation }) {
   };
 
   const handleEdit = () => {
-    navigation.navigate('InvoiceForm', {
+    const targetScreen =
+      invoiceData?.invoiceType === 'LABOUR' ? 'LabourInvoiceForm' : 'InvoiceForm';
+    navigation.navigate(targetScreen, {
       editMode: true,
       invoiceData: invoiceData,
     });
@@ -130,25 +161,27 @@ export default function Step4({ route, navigation }) {
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Invoice',
-      'Are you sure you want to delete this invoice?',
+      t('common.deleteInvoiceTitle'),
+      t('common.deleteInvoiceMessage'),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               const invoiceID = route?.params?.invoiceId;
-              await invoiceService.delete(invoiceID);
-              Alert.alert('Success', 'Invoice deleted successfully ✅');
-              navigation.goBack();
+              await invoiceService.remove(invoiceID);
+              Alert.alert(t('common.success'), t('common.invoiceDeleted'));
+              navigation.navigate('InvoiceList', {
+                refresh: true,
+              });
             } catch (error) {
               console.error('Delete error:', error);
-              Alert.alert('Error', 'Failed to delete invoice ❌');
+              Alert.alert(t('common.error'), t('common.failedDeleteInvoice'));
             }
           },
         },
@@ -156,22 +189,221 @@ export default function Step4({ route, navigation }) {
     );
   };
 
+  const handlePreviewPdf = async () => {
+    if (!invoiceData) return;
+    setPdfLoading(true);
+    try {
+      const html = buildInvoiceHtml({
+        invoiceData,
+        items,
+        sign,
+        amountInWords,
+        grandTotal,
+      });
+
+      const options = {
+        html,
+        fileName: `invoice_${Date.now()}`,
+        directory: 'Documents', // Android: app-specific external files dir; iOS: app doc dir
+        base64: false,
+      };
+
+      const pdf = await generatePDF(options);
+      // pdf.filePath already includes 'file://' prefix on both platforms usually
+
+      if (!pdf?.filePath) {
+        throw new Error('PDF file path not generated.');
+      }
+
+      setPdfFilePath(pdf.filePath.replace('file://', ''));
+      setPdfPreviewVisible(true);
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      Alert.alert(t('common.error'), error?.message || t('invoicePreview.failedToGeneratePdf'));
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  // ─── Fetch & Preview PDF ─────────────────────────────────
+  const handlePrint = async () => {
+    if (!invoiceData) return;
+
+    const payload = { ...invoiceData, sign, amountInWords };
+
+    setPdfLoading(true);
+    console.log('the payload', payload);
+    try {
+      console.log('trying to reach print');
+      const response = await fetch(
+        'https://pdf-generator-backend-s90a.onrender.com/pdf/AES/product-invoice',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+      const arrayBuffer = await response.arrayBuffer();
+      const base64Data = arrayBufferToBase64(arrayBuffer);
+
+      // Save to cache for preview
+      const filePath = `${RNFS.CachesDirectoryPath}/invoice_preview.pdf`;
+      await RNFS.writeFile(filePath, base64Data, 'base64');
+
+      setPdfBase64(base64Data);
+      setPdfFilePath(filePath);
+      setPdfPreviewVisible(true);
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      Alert.alert(t('common.error'), t('invoicePreview.failedToGeneratePdfRetry'));
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  // ─── Save / Download PDF ─────────────────────────────────
+  const handleSavePdf = async () => {
+    if (!pdfFilePath) {
+      Alert.alert(t('common.error'), t('invoicePreview.pdfNotReady'));
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      const fileName = `invoice_${invoiceData?.billNo || Date.now()}.pdf`;
+
+      if (Platform.OS === 'android') {
+        // Save to Downloads folder on Android
+        const destPath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+        await RNFS.copyFile(pdfFilePath, destPath);
+        Alert.alert(t('invoicePreview.savedTitle'), t('invoicePreview.savedMessage'));
+      } else {
+        // On iOS — use Share sheet to "Save to Files"
+        await Share.open({
+          title: 'Save Invoice',
+          url: `file://${pdfFilePath}`,
+          type: 'application/pdf',
+          filename: fileName,
+          saveToFiles: true, // iOS: shows "Save to Files" prominently
+          failOnCancel: false,
+        });
+      }
+    } catch (error) {
+      if (error?.message !== 'User did not share') {
+        console.error('Save failed:', error);
+        Alert.alert(t('common.error'), t('invoicePreview.failedToSavePdf'));
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Helper: ArrayBuffer → Base64 string
+  function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  // const paymentModes = ['Cash', 'UPI', 'Card', 'Net Banking'];
+
+  const openPaymentModal = () => {
+    setSelectedPaymentMode(invoiceData?.paymentMode || 'Cash');
+    setPaymentModalVisible(true);
+  };
+
+  const handleMarkAsPaid = async () => {
+    try {
+      setUpdatingPayment(true);
+      const invoiceID = route?.params?.invoiceId;
+
+      await invoiceService.updatePaymentStatus(
+        invoiceID,
+        'PAID',
+        selectedPaymentMode,
+      );
+
+      await loadInvoice();
+      setPaymentModalVisible(false);
+      Alert.alert(t('common.success'), t('invoicePreview.paymentUpdated'));
+    } catch (error) {
+      console.error('Mark paid error:', error);
+      Alert.alert(t('common.error'), t('invoicePreview.failedToUpdatePayment'));
+    } finally {
+      setUpdatingPayment(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!pdfFilePath) {
+      Alert.alert(t('common.error'), t('invoicePreview.pdfNotReady'));
+      return;
+    }
+
+    try {
+      console.log('Sharing PDF:', pdfFilePath);
+
+      await Share.open({
+        title: 'Share Invoice',
+        message: `Invoice ${invoiceData?.billNo || ''}`,
+        url: `file://${pdfFilePath}`,
+        type: 'application/pdf',
+        filename: 'invoice.pdf',
+        failOnCancel: false,
+      });
+    } catch (error) {
+      if (error?.message !== 'User did not share') {
+        console.error('Share failed:', error);
+
+        Alert.alert(t('invoicePreview.shareFailedTitle'), t('invoicePreview.shareFailedMessage'));
+      }
+    }
+  };
+
+  const handleNativePrint = async () => {
+    if (!pdfFilePath) {
+      Alert.alert(t('common.error'), t('invoicePreview.pdfNotReadyShort'));
+      return;
+    }
+
+    try {
+      await RNPrint.print({
+        filePath: pdfFilePath,
+      });
+    } catch (error) {
+      console.error('Print failed:', error);
+
+      Alert.alert(t('invoicePreview.printFailedTitle'), t('invoicePreview.printFailedMessage'));
+    }
+  };
+
   const dialCall = phoneNumber => {
     if (!phoneNumber) return;
 
     Linking.openURL(`tel:${phoneNumber}`).catch(err => {
       console.log(err);
-      Alert.alert('Error', 'Unable to open dialer');
+      Alert.alert(t('common.error'), t('invoicePreview.unableToOpenDialer'));
     });
   };
 
   const customerPhone =
     invoiceData?.customer?.mobile || invoiceData?.customer?.phone || '';
   const items = invoiceData?.items || [];
+  const isLabourInvoice = invoiceData?.invoiceType === 'LABOUR';
 
   const grandTotal =
     invoiceData?.items?.reduce(
-      (total, item) => total + item.qty * item.unitPrice,
+      (total, item) =>
+        total +
+        (isLabourInvoice
+          ? Number(item.amount || 0)
+          : Number(item.qty || 0) * Number(item.unitPrice || 0)),
       0,
     ) || 0;
 
@@ -199,7 +431,9 @@ export default function Step4({ route, navigation }) {
               <View style={styles.iconBtn} />
               <View style={{ flex: 1 }}>
                 <SkeletonLine style={{ width: '70%', height: 32 }} />
-                <SkeletonLine style={{ width: '50%', height: 16, marginTop: 6 }} />
+                <SkeletonLine
+                  style={{ width: '50%', height: 16, marginTop: 6 }}
+                />
               </View>
               <View style={styles.actionIcons}>
                 <View style={styles.iconBtnSmall} />
@@ -231,14 +465,14 @@ export default function Step4({ route, navigation }) {
         <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity
-              onPress={() => navigation.goBack()}
+              onPress={() => navigation.navigate('InvoiceList')}
               style={styles.iconBtn}
             >
               <ChevronLeft size={26} color="#111" />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>Invoice Preview</Text>
-              <Text style={styles.subtitle}>Aadhi Engine Services</Text>
+              <Text style={styles.title}>{t('invoicePreview.title')}</Text>
+              <Text style={styles.subtitle}>{t('invoicePreview.companySubtitle')}</Text>
             </View>
             <View style={styles.actionIcons}>
               <TouchableOpacity
@@ -259,9 +493,9 @@ export default function Step4({ route, navigation }) {
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.card}>
               <View style={styles.companyHeader}>
-                <Text style={styles.companyName}>Aadhi Engine Services</Text>
+                <Text style={styles.companyName}>Aadhi Engine Care</Text>
                 <Text style={styles.companyTag}>
-                  Kirloskar spares for R/HA/R1040
+                  KIRLOSKAR Spares for R/HA/R1040/SL90 Engines
                 </Text>
               </View>
 
@@ -269,9 +503,9 @@ export default function Step4({ route, navigation }) {
                 <View style={styles.metaRow}>
                   <ReceiptText size={14} color={COLORS.primary} />
                   <Text style={styles.metaText}>
-                    Bill No:{' '}
+                    {t('invoicePreview.billNo')}{' '}
                     <Text style={styles.metaValue}>
-                      {invoiceData?.invoiceCode || '-'}
+                      {invoiceData?.billNo || '-'}
                     </Text>
                   </Text>
                 </View>
@@ -279,7 +513,7 @@ export default function Step4({ route, navigation }) {
                 <View style={styles.metaRow}>
                   <CalendarDays size={14} color={COLORS.primary} />
                   <Text style={styles.metaText}>
-                    Date: <Text style={styles.metaValue}>{invoiceDate}</Text>
+                    {t('invoicePreview.date')} <Text style={styles.metaValue}>{invoiceDate}</Text>
                   </Text>
                 </View>
               </View>
@@ -287,11 +521,11 @@ export default function Step4({ route, navigation }) {
                 <View style={styles.infoBlock}>
                   <View style={styles.inlineRow}>
                     <MapPin size={14} color={COLORS.primary} />
-                    <Text style={styles.infoText}>
-                      3rd Street, Muthammal Colony
-                    </Text>
+                    <Text style={styles.infoText}>No. 5, Vetri Nagar</Text>
                   </View>
-                  <Text style={styles.infoText}>Tuticorin - 2</Text>
+                  <Text style={styles.infoText}>
+                    Vickramasingapuram - 627425
+                  </Text>
                   <View style={styles.inlineRow}>
                     <Mail size={14} color={COLORS.primary} />
                     <Text style={styles.infoText}>kingincare@gmail.com</Text>
@@ -309,14 +543,14 @@ export default function Step4({ route, navigation }) {
 
             <View style={styles.card}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Customer Details</Text>
+                <Text style={styles.sectionTitle}>{t('invoicePreview.customerDetails')}</Text>
               </View>
               <View style={styles.customerBox}>
-                <Text style={styles.customerLabel}>To</Text>
+                <Text style={styles.customerLabel}>{t('invoicePreview.to')}</Text>
                 <Text style={styles.customerName}>
                   {invoiceData?.customer?.name || '-'}
                 </Text>
-                
+
                 {customerPhone ? (
                   <TouchableOpacity
                     style={styles.callButton}
@@ -326,43 +560,87 @@ export default function Step4({ route, navigation }) {
                     <View style={styles.callIconContainer}>
                       <View style={styles.blinkingRing} />
                       <View style={styles.blinkingRing2} />
-                      <PhoneCall size={16} color="#fff" style={styles.callIcon} />
+                      <PhoneCall
+                        size={16}
+                        color="#fff"
+                        style={styles.callIcon}
+                      />
                     </View>
-                    <Text style={styles.callButtonText}>
-                      {customerPhone}
-                    </Text>
+                    <Text style={styles.callButtonText}>{customerPhone}</Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={styles.noPhoneText}>No phone number available</Text>
+                  <Text style={styles.noPhoneText}>
+                    {t('invoicePreview.noPhoneAvailable')}
+                  </Text>
                 )}
 
                 {invoiceData?.paymentStatus !== 'PENDING' && (
-                  <Text style={styles.customerSub}>
-                    Payment Mode: {invoiceData?.paymentMode || '-'}
-                  </Text>
+                  <View style={styles.paymentModeRow}>
+                    <Text style={styles.paymentModeLabel}>{t('invoicePreview.paymentMode')}</Text>
+                    <View style={styles.paymentModeValueRow}>
+                      <View
+                        style={[
+                          styles.paymentModeBadge,
+                          invoiceData?.paymentMode === 'Cash' &&
+                            styles.badgeCash,
+                          invoiceData?.paymentMode === 'UPI' &&
+                            styles.badgeUpi,
+                          invoiceData?.paymentMode === 'Card' &&
+                            styles.badgeCard,
+                          invoiceData?.paymentMode === 'Net Banking' &&
+                            styles.badgeNetBanking,
+                        ]}
+                      >
+                        <Text style={styles.paymentModeText}>
+                          {invoiceData?.paymentMode
+                            ? paymentModeLabels[invoiceData.paymentMode] || invoiceData.paymentMode
+                            : '-'}
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        onPress={openPaymentModal}
+                        hitSlop={8}
+                        style={styles.paymentModeEditBtn}
+                      >
+                        <Pencil size={14} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 )}
               </View>
             </View>
 
             <View style={styles.card}>
               <View style={styles.tableHeader}>
-                <Text style={styles.colSno}>S.No</Text>
-                <Text style={styles.colDesc}>Description</Text>
-                <Text style={styles.colQty}>Qty</Text>
-                <Text style={styles.colPrice}>Rate</Text>
-                <Text style={styles.colTotal}>Amount</Text>
+                <Text style={styles.colSno}>{t('invoicePreview.sNo')}</Text>
+                <Text style={styles.colDesc}>{t('invoicePreview.descriptionCol')}</Text>
+                {!isLabourInvoice && <Text style={styles.colQty}>{t('invoicePreview.qty')}</Text>}
+                {!isLabourInvoice && <Text style={styles.colPrice}>{t('invoicePreview.rate')}</Text>}
+                <Text style={styles.colTotal}>{t('invoicePreview.amount')}</Text>
               </View>
 
               {items.map((item, index) => (
                 <View style={styles.tableRow} key={index}>
                   <Text style={styles.colSnoData}>{index + 1}</Text>
-                  <Text style={styles.colDescData}>{item.name}</Text>
-                  <Text style={styles.colQtyData}>{item.qty}</Text>
-                  <Text style={styles.colPriceData}>
-                    ₹{item.unitPrice.toFixed(2)}
+                  <Text style={styles.colDescData}>
+                    {item.description ?? item.name}
                   </Text>
+                  {!isLabourInvoice && (
+                    <Text style={styles.colQtyData}>{item.qty}</Text>
+                  )}
+                  {!isLabourInvoice && (
+                    <Text style={styles.colPriceData}>
+                      ₹{Number(item.unitPrice || 0).toFixed(2)}
+                    </Text>
+                  )}
                   <Text style={styles.colTotalData}>
-                    ₹{(item.qty * item.unitPrice).toFixed(2)}
+                    ₹
+                    {isLabourInvoice
+                      ? Number(item.amount || 0).toFixed(2)
+                      : (
+                          Number(item.qty || 0) * Number(item.unitPrice || 0)
+                        ).toFixed(2)}
                   </Text>
                 </View>
               ))}
@@ -370,31 +648,188 @@ export default function Step4({ route, navigation }) {
 
             <View style={styles.card}>
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalLabel}>{t('invoicePreview.total')}</Text>
                 <Text style={styles.totalValue}>₹{grandTotal.toFixed(2)}</Text>
               </View>
 
-              <Text style={styles.wordsLabel}>Amount in words</Text>
+              <Text style={styles.wordsLabel}>{t('invoicePreview.amountInWords')}</Text>
               <Text style={styles.wordsText}>{amountInWords}</Text>
             </View>
 
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>{t('invoicePreview.sign')}</Text>
+              <Switch
+                value={sign}
+                onValueChange={setSign}
+                trackColor={{ false: '#D1D5DB', true: '#22C55E' }}
+                thumbColor={sign ? '#ffffff' : '#ffffff'}
+                ios_backgroundColor="#D1D5DB"
+              />
+            </View>
+            <View style={styles.actionRow}>
+              {invoiceData?.paymentStatus === 'PENDING' && (
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={openPaymentModal}
+                >
+                  <ReceiptText size={18} color="#333" />
+                  <Text style={styles.actionText}>{t('invoicePreview.markAsPaid')}</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={styles.previewPdfBtn}
+                onPress={handlePreviewPdf}
+                disabled={pdfLoading}
+              >
+                {pdfLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Printer size={18} color="#fff" />
+                )}
+
+                <Text style={styles.previewPdfText}>
+                  {pdfLoading ? t('invoicePreview.generatingPdf') : t('invoicePreview.previewPdf')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Modal
+              visible={paymentModalVisible}
+              transparent
+              animationType="slide"
+              onRequestClose={() => setPaymentModalVisible(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalTitle}>
+                    {invoiceData?.paymentStatus === 'PENDING'
+                      ? t('invoicePreview.selectPaymentMode')
+                      : t('invoicePreview.updatePaymentMode')}
+                  </Text>
+
+                  {['Cash', 'UPI', 'Card', 'Net Banking'].map(mode => (
+                    <TouchableOpacity
+                      key={mode}
+                      style={[
+                        styles.modeBtn,
+                        selectedPaymentMode === mode && styles.modeBtnActive,
+                      ]}
+                      onPress={() => setSelectedPaymentMode(mode)}
+                    >
+                      <Text
+                        style={[
+                          styles.modeText,
+                          selectedPaymentMode === mode && styles.modeTextActive,
+                        ]}
+                      >
+                        {paymentModeLabels[mode]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity
+                      style={styles.modalCancelBtn}
+                      onPress={() => setPaymentModalVisible(false)}
+                    >
+                      <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.modalSaveBtn}
+                      onPress={handleMarkAsPaid}
+                      disabled={updatingPayment}
+                    >
+                      <Text style={styles.modalSaveText}>
+                        {updatingPayment
+                          ? t('invoicePreview.updating')
+                          : invoiceData?.paymentStatus === 'PENDING'
+                          ? t('invoicePreview.confirm')
+                          : t('common.update')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+
+            <Modal
+              visible={pdfPreviewVisible}
+              animationType="slide"
+              onRequestClose={() => setPdfPreviewVisible(false)}
+            >
+              <SafeAreaView style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity
+                    onPress={() => setPdfPreviewVisible(false)}
+                    style={styles.modalCloseBtn}
+                  >
+                    <X size={22} color="#333" />
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>{t('invoicePreview.invoicePdf')}</Text>
+                  <View style={{ width: 40 }} />
+                </View>
+
+                {/* PDF Viewer */}
+                <View style={{ flex: 1 }}>
+                  {pdfLoading && (
+                    <ActivityIndicator size="large" style={{ marginTop: 40 }} />
+                  )}
+
+                  {pdfFilePath && (
+                    <Pdf
+                      key={pdfFilePath}
+                      source={{
+                        uri:
+                          Platform.OS === 'android'
+                            ? `file://${pdfFilePath}`
+                            : pdfFilePath,
+                      }}
+                      trustAllCerts={false}
+                      style={styles.pdfViewer}
+                      onLoadComplete={numberOfPages => {
+                        console.log(`PDF loaded, pages: ${numberOfPages}`);
+                      }}
+                      onError={error => {
+                        console.error('PDF render error:', error);
+                        Alert.alert(t('common.error'), t('invoicePreview.couldNotRenderPdf'));
+                      }}
+                    />
+                  )}
+                </View>
+
+                <View style={styles.pdfActionBar}>
+                  <TouchableOpacity
+                    style={styles.pdfShareBtn}
+                    onPress={handleShare}
+                    disabled={!pdfFilePath}
+                  >
+                    <Share2 size={20} color="#fff" />
+                    <Text style={styles.pdfActionText}>{t('invoicePreview.share')}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.pdfPrintBtn}
+                    onPress={handleSavePdf}
+                    disabled={!pdfFilePath || downloading}
+                  >
+                    {downloading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Download size={20} color="#fff" />
+                    )}
+                    <Text style={styles.pdfActionText}>
+                      {downloading ? t('invoicePreview.saving') : t('invoicePreview.download')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </SafeAreaView>
+            </Modal>
             <Text style={styles.footerText}>
               Only genuine <Text style={styles.footerStrong}>KIRLOSKAR</Text>{' '}
               Spares and <Text style={styles.footerStrong}>K-OIL</Text> for your
               Kirloskar engine's lifelong care.
             </Text>
-
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.actionBtn}>
-                <Share2 size={18} color="#333" />
-                <Text style={styles.actionText}>Share</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.actionBtn}>
-                <Printer size={18} color="#333" />
-                <Text style={styles.actionText}>Print</Text>
-              </TouchableOpacity>
-            </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -499,6 +934,7 @@ const styles = StyleSheet.create({
   infoText: {
     color: COLORS.primary,
     fontSize: 13,
+    fontFamily: 'Roboto',
   },
   callText: {
     fontWeight: '700',
@@ -514,6 +950,7 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 13,
     textAlign: 'right',
+    fontFamily: 'Roboto',
   },
   metaValue: {
     fontWeight: '700',
@@ -579,6 +1016,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 10,
     fontWeight: '700',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFF',
+    borderWidth: 1,
+    borderColor: '#E7ECF8',
+    marginBottom: 5,
+  },
+  switchLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111',
   },
   colPrice: {
     flex: 1.5,
@@ -787,5 +1242,225 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: '#EDF0F6',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 18,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 14,
+    color: '#111',
+  },
+  modeBtn: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  modeBtnActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#EEF2FF',
+  },
+  modeText: {
+    fontSize: 15,
+    color: '#222',
+  },
+  modeTextActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  modalSaveBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+  },
+  modalCancelText: {
+    fontWeight: '700',
+    color: '#333',
+  },
+  modalSaveText: {
+    fontWeight: '700',
+    color: '#fff',
+  },
+  paymentModeRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  paymentModeLabel: {
+    fontSize: 13,
+    color: '#555',
+    fontWeight: '600',
+  },
+  paymentModeValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paymentModeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paymentModeEditBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  paymentModeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  badgeCash: {
+    backgroundColor: '#16A34A',
+  },
+  badgeUpi: {
+    backgroundColor: '#7C3AED',
+  },
+  badgeCard: {
+    backgroundColor: '#2563EB',
+  },
+  badgeNetBanking: {
+    backgroundColor: '#F59E0B',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  saveBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  pdfViewer: {
+    flex: 1,
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+    backgroundColor: '#eee',
+  },
+
+  previewPdfBtn: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    elevation: 2,
+  },
+
+  previewPdfText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  modalCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+
+  pdfActionBar: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 12,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+
+  pdfShareBtn: {
+    flex: 1,
+    backgroundColor: '#2563EB',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  pdfPrintBtn: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  pdfActionText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

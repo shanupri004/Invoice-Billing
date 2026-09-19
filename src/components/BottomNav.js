@@ -1,14 +1,17 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Home, PlusCircle, FileText, BicepsFlexed } from 'lucide-react-native';
 import { COLORS } from '../constants/Colors';
+import { useTranslation } from '../localization/LanguageContext';
+import Text from './AppText';
 
 export default function BottomNav({ navigation, active }) {
+  const { t } = useTranslation();
   const tabs = [
-    { name: 'Home', icon: Home, screen: 'Dashboard' },
-    { name: 'Create', icon: PlusCircle, screen: 'InvoiceForm' },
-    { name: 'Labour', icon: BicepsFlexed, screen: 'labour' },
-    { name: 'Invoices', icon: FileText, screen: 'InvoiceList' },
+    { name: 'Home', label: t('bottomNav.home'), icon: Home, screen: 'Dashboard' },
+    { name: 'Create', label: t('bottomNav.create'), icon: PlusCircle, screen: 'InvoiceForm' },
+    { name: 'Labour', label: t('bottomNav.labour'), icon: BicepsFlexed, screen: 'LabourInvoiceForm' },
+    { name: 'Invoices', label: t('bottomNav.invoices'), icon: FileText, screen: 'InvoiceList' },
   ];
 
   return (
@@ -33,7 +36,7 @@ export default function BottomNav({ navigation, active }) {
                 { color: isActive ? COLORS.primary : COLORS.secondary },
               ]}
             >
-              {tab.name}
+              {tab.label}
             </Text>
           </TouchableOpacity>
         );
@@ -70,5 +73,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 20,
     marginTop: 3,
+    fontFamily: 'Roboto' 
   },
 });

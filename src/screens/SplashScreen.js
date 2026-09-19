@@ -1,18 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { COLORS } from '../constants/Colors';
 import Icon from '../assets/svg/setting.svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const loadingTexts = [
-  'Initializing System...',
-  'Connecting Services...',
-  'Loading Modules...',
-  'Preparing Dashboard...',
-  'Almost Ready...',
-];
+import { useTranslation } from '../localization/LanguageContext';
+import Text from '../components/AppText';
 
 export default function SplashScreen({ navigation }) {
+  const { t } = useTranslation();
+  const loadingTexts = t('splash.loadingTexts');
   const [textIndex, setTextIndex] = useState(0);
   useEffect(() => {
     const textInterval = setInterval(() => {
@@ -55,9 +51,9 @@ export default function SplashScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Icon width={50} height={50} style={{ marginBottom: 15 }} />
-      <Text style={styles.logo}>Aadhi Engine</Text>
-      <Text style={styles.logo}>Services</Text>
-      <Text style={styles.sub}>OFFLINE BILLING SYSTEM</Text>
+      <Text style={styles.logo}>{t('splash.companyLine1')}</Text>
+      <Text style={styles.logo}>{t('splash.companyLine2')}</Text>
+      <Text style={styles.sub}>{t('splash.tagline')}</Text>
 
       <View style={styles.loader}>
         <ActivityIndicator size="large" color="#fff" />
@@ -68,6 +64,9 @@ export default function SplashScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  Text: {
+    fontFamily: 'Roboto',
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.primary,
@@ -83,6 +82,7 @@ const styles = StyleSheet.create({
   sub: {
     color: 'white',
     marginTop: 10,
+    fontFamily: 'Roboto' 
   },
   loader: {
     position: 'absolute',
@@ -93,5 +93,6 @@ const styles = StyleSheet.create({
     color: 'white',
     marginTop: 15,
     fontSize: 16,
+    fontFamily: 'Roboto' 
   },
 });

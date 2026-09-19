@@ -18,12 +18,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   ChevronLeft,
   UserPlus,
-  Wrench,
+  FileText,
   IndianRupee,
   Pencil,
   Trash2,
   X,
-  CalendarDays,
   Hash,
 } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -65,7 +64,7 @@ const PillInput = ({ icon: Icon, error, containerStyle, ...props }) => (
   </View>
 );
 
-export default function CreateInvoiceSingle() {
+export default function CreateLabourInvoice() {
   const navigation = useNavigation();
   const route = useRoute();
   const { t } = useTranslation();
@@ -74,12 +73,11 @@ export default function CreateInvoiceSingle() {
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  const [form, setForm] = useState({ name: '', quantity: '', price: '' });
+  const [form, setForm] = useState({ description: '', amount: '' });
   const [formErrors, setFormErrors] = useState({});
-  const [products, setProducts] = useState([]);
+  const [items, setItems] = useState([]);
   const [BillNo, setBillNo] = useState('');
 
-  const [paymentStatus, setPaymentStatus] = useState('PENDING');
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [invoiceDate, setInvoiceDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -97,11 +95,7 @@ export default function CreateInvoiceSingle() {
   const [showPaymentDropdown, setShowPaymentDropdown] = useState(false);
 
   const [editId, setEditId] = useState(null);
-  const [editForm, setEditForm] = useState({
-    name: '',
-    quantity: '',
-    price: '',
-  });
+  const [editForm, setEditForm] = useState({ description: '', amount: '' });
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingInvoiceId, setEditingInvoiceId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -119,75 +113,70 @@ export default function CreateInvoiceSingle() {
     loadCustomers();
   }, []);
 
-useEffect(() => {
-  const { editMode, invoiceData } = route.params || {};
+  useEffect(() => {
+    const { editMode, invoiceData } = route.params || {};
 
-  if (editMode && invoiceData) {
-    setIsEditMode(true);
-    setEditingInvoiceId(invoiceData.id);
+    if (editMode && invoiceData) {
+      setIsEditMode(true);
+      setEditingInvoiceId(invoiceData.id);
 
-    setIsPaid(invoiceData.paymentStatus === 'PAID');
-    setPaymentMode(invoiceData.paymentMode || 'Cash');
-    setBillNo(String(invoiceData.bill_no ?? invoiceData.billNo ?? ''));
+      setIsPaid(invoiceData.paymentStatus === 'PAID');
+      setPaymentMode(invoiceData.paymentMode || 'Cash');
+      setBillNo(String(invoiceData.bill_no ?? invoiceData.billNo ?? ''));
 
-    if (invoiceData.customer) setSelectedCustomer(invoiceData.customer);
-    if (invoiceData.invoiceDate) setInvoiceDate(new Date(invoiceData.invoiceDate));
+      if (invoiceData.customer) setSelectedCustomer(invoiceData.customer);
+      if (invoiceData.invoiceDate) setInvoiceDate(new Date(invoiceData.invoiceDate));
 
-    if (invoiceData.items && invoiceData.items.length > 0) {
-      const items = invoiceData.items.map((item, index) => ({
-        id: Date.now() + index,
-        name: item.name,
-        quantity: item.qty,
-        price: item.unitPrice,
-      }));
-      setProducts(items);
+      if (invoiceData.items && invoiceData.items.length > 0) {
+        const mapped = invoiceData.items.map((item, index) => ({
+          id: Date.now() + index,
+          description: item.description ?? item.name ?? '',
+          amount: Number(item.amount ?? item.unitPrice ?? 0),
+        }));
+        setItems(mapped);
+      }
     }
-  }
-}, [route.params]);
+  }, [route.params]);
 
   const subtotal = useMemo(
-    () =>
-      products.reduce((s, p) => s + Number(p.quantity) * Number(p.price), 0),
-    [products],
+    () => items.reduce((s, i) => s + Number(i.amount), 0),
+    [items],
   );
 
   const totalAmount = subtotal;
 
   const validateForm = f => {
     const e = {};
-    if (!f.name.trim()) e.name = t('common.required');
-    if (!f.quantity || Number(f.quantity) <= 0) e.quantity = t('common.required');
-    if (!f.price || Number(f.price) < 0) e.price = t('common.required');
+    if (!f.description.trim()) e.description = t('common.required');
+    if (!f.amount || Number(f.amount) < 0) e.amount = t('common.required');
     return e;
   };
 
-  const addProduct = () => {
+  const addItem = () => {
     const errors = validateForm(form);
     if (Object.keys(errors).length) {
       setFormErrors(errors);
       return;
     }
 
-    setProducts(prev => [
+    setItems(prev => [
       ...prev,
       {
         id: Date.now(),
-        name: form.name.trim(),
-        quantity: Number(form.quantity),
-        price: Number(form.price),
+        description: form.description.trim(),
+        amount: Number(form.amount),
       },
     ]);
 
-    setForm({ name: '', quantity: '', price: '' });
+    setForm({ description: '', amount: '' });
     setFormErrors({});
   };
 
   const startEdit = item => {
     setEditId(item.id);
     setEditForm({
-      name: item.name,
-      quantity: String(item.quantity),
-      price: String(item.price),
+      description: item.description,
+      amount: String(item.amount),
     });
   };
 
@@ -198,26 +187,25 @@ useEffect(() => {
       return;
     }
 
-    setProducts(prev =>
-      prev.map(p =>
-        p.id === editId
+    setItems(prev =>
+      prev.map(i =>
+        i.id === editId
           ? {
-              ...p,
-              name: editForm.name.trim(),
-              quantity: Number(editForm.quantity),
-              price: Number(editForm.price),
+              ...i,
+              description: editForm.description.trim(),
+              amount: Number(editForm.amount),
             }
-          : p,
+          : i,
       ),
     );
 
     setEditId(null);
-    setEditForm({ name: '', quantity: '', price: '' });
+    setEditForm({ description: '', amount: '' });
     setFormErrors({});
   };
 
-  const deleteProduct = id => {
-    setProducts(prev => prev.filter(p => p.id !== id));
+  const deleteItem = id => {
+    setItems(prev => prev.filter(i => i.id !== id));
     if (editId === id) setEditId(null);
   };
 
@@ -229,15 +217,15 @@ useEffect(() => {
         return;
       }
 
-      if (products.length === 0) {
-        alert(t('invoiceForm.addAtLeastOneProduct'));
+      if (items.length === 0) {
+        alert(t('invoiceForm.addAtLeastOneItem'));
         return;
       }
 
       setSubmitting(true);
 
       const payload = {
-        invoiceType: 'PRODUCT',
+        invoiceType: 'LABOUR',
         invoiceDate: formatDate(invoiceDate),
         customerId: selectedCustomer.id,
 
@@ -246,37 +234,29 @@ useEffect(() => {
 
         bill_no: Number(BillNo),
 
-        items: products.map(p => ({
-          name: p.name,
-          qty: p.quantity,
-          unitPrice: p.price,
+        items: items.map(i => ({
+          description: i.description,
+          amount: i.amount,
         })),
 
         totalAmount,
       };
 
-      console.log(payload,"======")
-
       let res;
       if (isEditMode && editingInvoiceId) {
-        // Update existing invoice
-        console.log('Updating invoice with payload:', payload);
         res = await invoiceService.update(editingInvoiceId, payload);
-        Alert.alert(t('common.success'), t('invoiceForm.invoiceUpdated'));
+        Alert.alert(t('common.success'), t('invoiceForm.labourInvoiceUpdated'));
       } else {
-        // Create new invoice
-        console.log('Creating invoice with payload:', payload);
         res = await invoiceService.create(payload);
-        Alert.alert(t('common.success'), t('invoiceForm.invoiceCreated'));
+        Alert.alert(t('common.success'), t('invoiceForm.labourInvoiceCreated'));
       }
 
       // Reset form
       setSelectedCustomer(null);
-      setProducts([]);
-      setForm({ name: '', quantity: '', price: '' });
+      setItems([]);
+      setForm({ description: '', amount: '' });
       setEditId(null);
-      setEditForm({ name: '', quantity: '', price: '' });
-      setPaymentStatus('PENDING');
+      setEditForm({ description: '', amount: '' });
       setPaymentMode('Cash');
       setInvoiceDate(new Date());
       setIsEditMode(false);
@@ -285,9 +265,7 @@ useEffect(() => {
       navigation.navigate('previewInvoice', { invoiceId: res.id || res._id });
     } catch (err) {
       console.error('ERROR:', err.details);
-      Alert.alert(
-        err.details
-      );
+      Alert.alert(err.details);
     } finally {
       setSubmitting(false);
     }
@@ -300,16 +278,13 @@ useEffect(() => {
       t('common.deleteInvoiceTitle'),
       t('common.deleteInvoiceMessage'),
       [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
+        { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
-              await invoiceService.delete(editingInvoiceId);
+              await invoiceService.remove(editingInvoiceId);
               Alert.alert(t('common.success'), t('common.invoiceDeleted'));
               navigation.goBack();
             } catch (error) {
@@ -323,7 +298,7 @@ useEffect(() => {
   };
 
   const getTitle = () => {
-    return isEditMode ? t('invoiceForm.editInvoice') : t('invoiceForm.createInvoice');
+    return isEditMode ? t('invoiceForm.editLabourInvoice') : t('invoiceForm.createLabourInvoice');
   };
 
   return (
@@ -428,40 +403,26 @@ useEffect(() => {
 
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 10 }}>
-                <Field label={t('invoiceForm.invoiceDate')} error={formErrors.quantity}>
+                <Field label={t('invoiceForm.invoiceDate')}>
                   <PillInput
                     placeholder="0"
-                    // keyboardType="date"
                     value={formatDate(invoiceDate)}
-                    // editable={false}
                     onPress={() => setShowDatePicker(true)}
                   />
                 </Field>
               </View>
               <View style={{ flex: 1 }}>
-                <Field label={t('invoiceForm.billNo')} error={formErrors.price}>
+                <Field label={t('invoiceForm.billNo')}>
                   <PillInput
                     icon={Hash}
                     placeholder="0"
                     keyboardType="numeric"
                     value={BillNo}
                     onChangeText={v => setBillNo(v)}
-                    error={formErrors.setBillNo}
                   />
                 </Field>
               </View>
             </View>
-
-            {/* <Field label="Invoice Date">
-            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-              <View style={[styles.pillInput, { height: 50, justifyContent: 'space-between' }]}>
-                <Text style={{ color: '#111', fontWeight: '600' }}>
-                  {formatDate(invoiceDate)}
-                </Text>
-                <CalendarDays size={20} color={COLORS.secondary} />
-              </View>
-            </TouchableOpacity>
-          </Field> */}
 
             {showDatePicker && (
               <DateTimePicker
@@ -475,97 +436,66 @@ useEffect(() => {
               />
             )}
 
-            <Text style={[styles.label, { marginBottom: 12 }]}>
-              {t('invoiceForm.addProduct')}
-            </Text>
+            <Text style={[styles.label, { marginBottom: 12 }]}>{t('invoiceForm.addItem')}</Text>
 
-            <Field error={formErrors.name}>
+            <Field error={formErrors.description}>
               <PillInput
-                icon={Wrench}
-                placeholder={t('invoiceForm.productNamePlaceholder')}
-                value={form.name}
-                onChangeText={v => setForm(f => ({ ...f, name: v }))}
-                error={formErrors.name}
+                icon={FileText}
+                placeholder={t('invoiceForm.descriptionPlaceholder')}
+                value={form.description}
+                onChangeText={v => setForm(f => ({ ...f, description: v }))}
+                error={formErrors.description}
               />
             </Field>
 
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Field label={t('invoiceForm.qty')} error={formErrors.quantity}>
-                  <PillInput
-                    placeholder="0"
-                    keyboardType="numeric"
-                    value={form.quantity}
-                    onChangeText={v => setForm(f => ({ ...f, quantity: v }))}
-                    error={formErrors.quantity}
-                  />
-                </Field>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Field label={t('invoiceForm.unitPrice')} error={formErrors.price}>
-                  <PillInput
-                    icon={IndianRupee}
-                    placeholder="0.00"
-                    keyboardType="numeric"
-                    value={form.price}
-                    onChangeText={v => setForm(f => ({ ...f, price: v }))}
-                    error={formErrors.price}
-                  />
-                </Field>
-              </View>
-            </View>
+            <Field error={formErrors.amount}>
+              <PillInput
+                icon={IndianRupee}
+                placeholder={t('invoiceForm.amountPlaceholder')}
+                keyboardType="numeric"
+                value={form.amount}
+                onChangeText={v => setForm(f => ({ ...f, amount: v }))}
+                error={formErrors.amount}
+              />
+            </Field>
 
-            <TouchableOpacity style={styles.dashedBtn} onPress={addProduct}>
-              <Text style={styles.dashedBtnText}>{t('invoiceForm.addProductBtn')}</Text>
+            <TouchableOpacity style={styles.dashedBtn} onPress={addItem}>
+              <Text style={styles.dashedBtnText}>{t('invoiceForm.addItemBtn')}</Text>
             </TouchableOpacity>
 
-            {products.length > 0 && (
+            {items.length > 0 && (
               <View style={styles.itemsCard}>
                 <View style={styles.itemsCardHeader}>
                   <Text style={styles.itemsCardTitle}>
-                    {t('invoiceForm.items', { count: products.length })}
+                    {t('invoiceForm.items', { count: items.length })}
                   </Text>
                   <Text style={styles.itemsCardTotal}>
                     ₹{currency(subtotal)}
                   </Text>
                 </View>
 
-                {products.map(item => (
+                {items.map(item => (
                   <View key={item.id} style={styles.itemRow}>
                     {editId === item.id ? (
                       <>
                         <View style={{ flex: 1 }}>
                           <TextInput
-                            value={editForm.name}
+                            value={editForm.description}
                             onChangeText={v =>
-                              setEditForm(f => ({ ...f, name: v }))
+                              setEditForm(f => ({ ...f, description: v }))
                             }
                             style={[styles.editInput, { marginBottom: 8 }]}
-                            placeholder={t('invoiceForm.productNamePlaceholder')}
+                            placeholder={t('invoiceForm.descriptionPlaceholder')}
                           />
-                          <View style={{ flexDirection: 'row' }}>
-                            <TextInput
-                              value={editForm.quantity}
-                              keyboardType="numeric"
-                              onChangeText={v =>
-                                setEditForm(f => ({ ...f, quantity: v }))
-                              }
-                              style={[
-                                styles.editInput,
-                                { flex: 1, marginRight: 10 },
-                              ]}
-                              placeholder={t('invoiceForm.qty')}
-                            />
-                            <TextInput
-                              value={editForm.price}
-                              keyboardType="numeric"
-                              onChangeText={v =>
-                                setEditForm(f => ({ ...f, price: v }))
-                              }
-                              style={[styles.editInput, { flex: 1 }]}
-                              placeholder={t('invoiceForm.unitPrice')}
-                            />
-                          </View>
+                          <TextInput
+                            value={editForm.amount}
+                            keyboardType="numeric"
+                            onChangeText={v =>
+                              setEditForm(f => ({ ...f, amount: v }))
+                            }
+                            style={styles.editInput}
+                            placeholder={t('invoiceForm.amountPlaceholder')}
+                          />
                         </View>
                         <TouchableOpacity
                           onPress={saveEdit}
@@ -577,14 +507,13 @@ useEffect(() => {
                     ) : (
                       <>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.itemName}>{item.name}</Text>
-                          <Text style={styles.itemSub}>
-                            {item.quantity} × ₹{Number(item.price).toFixed(2)}
+                          <Text style={styles.itemName}>
+                            {item.description}
                           </Text>
                         </View>
                         <View style={styles.itemActions}>
                           <Text style={styles.itemTotal}>
-                            ₹{currency(item.quantity * item.price)}
+                            ₹{currency(item.amount)}
                           </Text>
                           <TouchableOpacity
                             onPress={() => startEdit(item)}
@@ -594,7 +523,7 @@ useEffect(() => {
                             <Pencil size={18} color={COLORS.primary} />
                           </TouchableOpacity>
                           <TouchableOpacity
-                            onPress={() => deleteProduct(item.id)}
+                            onPress={() => deleteItem(item.id)}
                             hitSlop={6}
                             style={styles.itemActionsIcon}
                           >
@@ -804,7 +733,6 @@ const styles = StyleSheet.create({
     borderColor: '#f1f5f9',
   },
   itemName: { fontSize: 17, fontWeight: '700', color: '#111' },
-  itemSub: { fontSize: 13, color: COLORS.secondary, marginTop: 3 },
   itemActions: { flexDirection: 'row', alignItems: 'center' },
   itemActionsIcon: { marginLeft: 14 },
   itemTotal: { fontSize: 17, fontWeight: '800', color: '#111' },
@@ -822,17 +750,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   saveBtnText: { color: '#16a34a', fontWeight: '700', fontSize: 14 },
-  paymentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 18,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -846,29 +763,6 @@ const styles = StyleSheet.create({
   },
   grandLabel: { fontSize: 18, fontWeight: '800', color: '#111' },
   grandValue: { fontSize: 22, fontWeight: '900', color: COLORS.primary },
-  modeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  modeBtn: {
-    minWidth: 90,
-    marginRight: 8,
-    marginBottom: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#e5e7eb',
-    alignItems: 'center',
-  },
-  modeBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  modeBtnText: { fontWeight: '700', fontSize: 14, color: '#6b7280' },
-  modeBtnTextActive: { color: '#fff' },
   submitBtn: {
     backgroundColor: COLORS.primary,
     padding: 18,
@@ -899,21 +793,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d1d5db',
   },
-
   toggleBtnActive: {
     backgroundColor: '#22c55e',
     borderColor: '#22c55e',
   },
-
   toggleText: {
     fontWeight: '700',
     color: '#6b7280',
   },
-
   toggleTextActive: {
     color: '#fff',
   },
-
   dropdown: {
     height: 50,
     borderWidth: 1,
@@ -923,7 +813,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     backgroundColor: '#fff',
   },
-
   dropdownList: {
     marginTop: 5,
     borderWidth: 1,
@@ -932,7 +821,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     overflow: 'hidden',
   },
-
   dropdownItem: {
     padding: 15,
     borderBottomWidth: 1,
