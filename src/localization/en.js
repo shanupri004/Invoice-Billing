@@ -2,6 +2,8 @@ export default {
   common: {
     cancel: 'Cancel',
     delete: 'Delete',
+    tryAgain: 'Try Again',
+    retrying: 'Checking...',
     save: 'Save',
     edit: 'Edit',
     update: 'Update',
@@ -24,6 +26,12 @@ export default {
     failedDeleteInvoice: 'Failed to delete invoice ',
   },
 
+  network: {
+    offlineTitle: 'No internet connection',
+    offlineMessage:
+      'Some features need an internet connection. Please reconnect and try again.',
+  },
+
   stepIndicator: {
     customer: 'Customer',
     products: 'Products',
@@ -39,11 +47,11 @@ export default {
 
   splash: {
     companyLine1: 'Aadhi Engine',
-    companyLine2: 'Services',
+    companyLine2: 'Care',
     tagline: 'ONLINE BILLING SYSTEM',
     loadingTexts: [
       'Initializing System...',
-      'Connecting Services...',
+      'Connecting Care...',
       'Loading Modules...',
       'Preparing Dashboard...',
       'Almost Ready...',
@@ -51,7 +59,7 @@ export default {
   },
 
   login: {
-    companyName: 'Aadhi Engine Services',
+    companyName: 'Aadhi Engine Care',
     welcomeBack: 'Welcome Back',
     enterPin: 'Enter your 4-digit PIN to continue',
     somethingWrong: 'Something went wrong',
@@ -73,7 +81,7 @@ export default {
     logout: 'Logout',
     logoutConfirmTitle: 'Are you sure?',
     logoutConfirmMessage: 'You will be logged out of the system.',
-    footer: 'Aadhi Engine Service v1.0.0 (Build 2026)',
+    footer: 'Aadhi Engine Care v1.0.0 (Build 2026)',
     language: 'LANGUAGE',
     appLanguage: 'App Language',
     english: 'English',
@@ -82,7 +90,7 @@ export default {
 
   dashboard: {
     title: 'Dashboard',
-    subtitle: 'Aadhi Engine Service',
+    subtitle: 'Aadhi Engine Care',
     quickActions: 'QUICK ACTIONS',
     productInvoice: 'Product Invoice',
     labourInvoices: 'Labour Invoices',
@@ -118,7 +126,7 @@ export default {
   createCustomer: {
     editTitle: 'Edit Customer',
     addTitle: 'Add Customer',
-    subtitle: 'Aadhi Engine Service',
+    subtitle: 'Aadhi Engine Care',
     heading: 'Customer Details',
     descriptionEdit: 'Update the customer information below',
     descriptionAdd: 'Fill in the details below to add a new customer',
@@ -197,6 +205,8 @@ export default {
     paymentStatus: 'Payment Status',
     invoiceType: 'Invoice Type',
     dateRange: 'Date Range',
+    selectStartDate: 'Select start date',
+    selectEndDate: 'Select end date',
     clearAll: 'Clear All',
     applyFilters: 'Apply Filters',
     all: 'ALL',
@@ -247,5 +257,29 @@ export default {
     paymentUpdated: 'Invoice marked as paid ',
     failedToUpdatePayment: 'Failed to update payment status ',
     couldNotRenderPdf: 'Could not render PDF preview.',
+  },
+  notifications: {
+    sectionTitle: 'NOTIFICATIONS',
+    paymentReminders: 'Notifications',
+    paymentRemindersDescription:
+      'Get unpaid invoice reminders, a weekly summary, and invoice activity alerts.',
+    permissionTitle: 'Notifications are off',
+    permissionMessage:
+      'Allow notifications in your device settings to receive payment reminders.',
+    setupFailed: 'Could not set up payment reminders. Please try again.',
+    channelName: 'Payment reminders',
+    unknownCustomer: 'your customer',
+    pendingTitle: 'Payment still pending',
+    pendingMessage:
+      'Payment for invoice #{{billNo}} for {{customer}} ({{amount}}) is still pending after {{days}} days.',
+    weeklyTitle: 'Weekly pending payments',
+    weeklyMessage:
+      '{{count}} invoices have pending payments totaling {{amount}}.',
+    invoiceCreatedTitle: 'Invoice created',
+    invoiceCreatedMessage:
+      'Invoice #{{billNo}} for {{customer}} ({{amount}}) was saved.',
+    paymentReceivedTitle: 'Payment received',
+    paymentReceivedMessage:
+      'Payment of {{amount}} for invoice #{{billNo}} from {{customer}} was marked as received.',
   },
 };

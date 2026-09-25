@@ -5,6 +5,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Switch,
+  Alert,
 } from 'react-native';
 import { COLORS } from '../constants/Colors';
 import { ChevronLeft, ChevronRight, LogOut, Languages } from 'lucide-react-native';
@@ -13,10 +15,55 @@ import BottomNav from '../components/BottomNav';
 import ConfirmModal from '../components/ConfirmModal';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
+import { invoiceService } from '../services/invoiceService';
+import { notificationService } from '../services/notificationService';
 
 export default function SettingScreen({ navigation }) {
   const { t, language, setLanguage } = useTranslation();
   const [logoutModal, setLogoutModal] = useState(false);
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
+  const [savingReminderSetting, setSavingReminderSetting] = useState(true);
+
+  React.useEffect(() => {
+    let active = true;
+    notificationService.isEnabled().then(enabled => {
+      if (active) {
+        setRemindersEnabled(enabled);
+        setSavingReminderSetting(false);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleReminderToggle = async enabled => {
+    setSavingReminderSetting(true);
+    try {
+      if (enabled) {
+        const granted = await notificationService.enable(language);
+        if (!granted) {
+          Alert.alert(
+            t('notifications.permissionTitle'),
+            t('notifications.permissionMessage'),
+          );
+          return;
+        }
+
+        setRemindersEnabled(true);
+        const invoices = await invoiceService.getAll();
+        await notificationService.syncAll(invoices, language);
+      } else {
+        await notificationService.disable();
+        setRemindersEnabled(false);
+      }
+    } catch (error) {
+      Alert.alert(t('common.error'), t('notifications.setupFailed'));
+    } finally {
+      setSavingReminderSetting(false);
+    }
+  };
 
   const handleLogout = async () => {
     setLogoutModal(false);
@@ -26,6 +73,7 @@ export default function SettingScreen({ navigation }) {
 
   const languages = [
     { code: 'en', label: 'English' },
+    { code: 'hi', label: 'हिन्दी' },
     { code: 'ta', label: 'தமிழ்' },
     { code: 'te', label: 'తెలుగు' },
     { code: 'ml', label: 'മലയാളം' },
@@ -103,6 +151,29 @@ export default function SettingScreen({ navigation }) {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+          </View>
+
+          <Text style={styles.section}>
+            {t('notifications.sectionTitle')}
+          </Text>
+
+          <View style={styles.card}>
+            <View style={styles.notificationRow}>
+              <View style={styles.notificationCopy}>
+                <Text style={styles.rowText}>
+                  {t('notifications.paymentReminders')}
+                </Text>
+                <Text style={styles.notificationDescription}>
+                  {t('notifications.paymentRemindersDescription')}
+                </Text>
+              </View>
+              <Switch
+                value={remindersEnabled}
+                disabled={savingReminderSetting}
+                onValueChange={handleReminderToggle}
+                trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
+              />
             </View>
           </View>
 
@@ -236,6 +307,26 @@ const styles = StyleSheet.create({
 
   languageList: {
     padding: 8,
+  },
+
+  notificationRow: {
+    minHeight: 76,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+
+  notificationCopy: {
+    flex: 1,
+    paddingRight: 12,
+  },
+
+  notificationDescription: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#6b7280',
   },
 
   languageOption: {

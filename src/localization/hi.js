@@ -2,6 +2,8 @@ export default {
   common: {
     cancel: 'रद्द करें',
     delete: 'हटाएं',
+    tryAgain: 'पुनः प्रयास करें',
+    retrying: 'जाँच की जा रही है...',
     save: 'सहेजें',
     edit: 'संपादित करें',
     update: 'अपडेट करें',
@@ -22,6 +24,12 @@ export default {
     deleteInvoiceMessage: 'क्या आप वाकई इस इनवॉइस को हटाना चाहते हैं?',
     invoiceDeleted: 'इनवॉइस सफलतापूर्वक हटा दिया गया',
     failedDeleteInvoice: 'इनवॉइस हटाने में विफल',
+  },
+
+  network: {
+    offlineTitle: 'इंटरनेट कनेक्शन नहीं है',
+    offlineMessage:
+      'कुछ सुविधाओं के लिए इंटरनेट कनेक्शन आवश्यक है। कृपया इंटरनेट से दोबारा कनेक्ट करें और फिर प्रयास करें।',
   },
 
   stepIndicator: {
@@ -134,7 +142,8 @@ export default {
     updateCustomer: 'ग्राहक अपडेट करें',
     saveCustomer: 'ग्राहक सहेजें',
     discardTitle: 'बदलाव छोड़ें?',
-    discardMessage: 'आपके बदलाव सहेजे नहीं जाएंगे। क्या आप बाहर निकलना चाहते हैं?',
+    discardMessage:
+      'आपके बदलाव सहेजे नहीं जाएंगे। क्या आप बाहर निकलना चाहते हैं?',
     discard: 'छोड़ें',
     keepEditing: 'संपादन जारी रखें',
     deleteCustomerTitle: 'ग्राहक हटाएं?',
@@ -235,7 +244,8 @@ export default {
     pdfNotReady: 'PDF अभी तैयार नहीं है।',
     pdfNotReadyShort: 'PDF तैयार नहीं है।',
     failedToGeneratePdf: 'PDF तैयार करने में विफल।',
-    failedToGeneratePdfRetry: 'PDF तैयार करने में विफल। कृपया पुनः प्रयास करें।',
+    failedToGeneratePdfRetry:
+      'PDF तैयार करने में विफल। कृपया पुनः प्रयास करें।',
     savedTitle: 'सहेजा गया!',
     savedMessage: 'इनवॉइस Downloads फ़ोल्डर में सहेजा गया।',
     failedToSavePdf: 'PDF सहेजने में विफल।',
@@ -247,5 +257,29 @@ export default {
     paymentUpdated: 'इनवॉइस को भुगतान किया गया के रूप में चिह्नित किया गया',
     failedToUpdatePayment: 'भुगतान स्थिति अपडेट करने में विफल',
     couldNotRenderPdf: 'PDF पूर्वावलोकन प्रदर्शित नहीं किया जा सका।',
+  },
+  notifications: {
+    sectionTitle: 'सूचनाएं',
+    paymentReminders: 'सूचनाएं',
+    paymentRemindersDescription:
+      'भुगतान रिमाइंडर, साप्ताहिक सारांश और इनवॉइस अपडेट पाएं।',
+    permissionTitle: 'सूचनाएं बंद हैं',
+    permissionMessage:
+      'भुगतान रिमाइंडर पाने के लिए डिवाइस सेटिंग में सूचनाओं की अनुमति दें।',
+    setupFailed: 'भुगतान रिमाइंडर सेट नहीं हो सके। कृपया फिर से प्रयास करें।',
+    channelName: 'भुगतान रिमाइंडर',
+    unknownCustomer: 'आपके ग्राहक',
+    pendingTitle: 'भुगतान अभी बाकी है',
+    pendingMessage:
+      '{{customer}} के बिल #{{billNo}} ({{amount}}) का भुगतान {{days}} दिन बाद भी बाकी है।',
+    weeklyTitle: 'लंबित भुगतानों का साप्ताहिक सारांश',
+    weeklyMessage:
+      '{{count}} बिलों का कुल {{amount}} भुगतान अभी लंबित है।',
+    invoiceCreatedTitle: 'नया बिल बनाया गया',
+    invoiceCreatedMessage:
+      '{{customer}} के लिए {{amount}} का बिल #{{billNo}} सेव हो गया है।',
+    paymentReceivedTitle: 'भुगतान प्राप्त हुआ',
+    paymentReceivedMessage:
+      '{{customer}} के बिल #{{billNo}} के लिए {{amount}} का भुगतान प्राप्त हुआ।',
   },
 };

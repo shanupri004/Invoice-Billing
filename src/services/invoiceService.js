@@ -1,6 +1,35 @@
 // src/services/invoiceService.js
 
 import { supabase } from '../lib/supabase';
+import { notificationService } from './notificationService';
+
+const refreshNotificationSchedules = async () => {
+  try {
+    const invoices = await invoiceService.getAll();
+    await notificationService.syncAll(invoices);
+  } catch (error) {
+    console.warn('Unable to refresh invoice notifications:', error);
+  }
+};
+
+const getPaymentStatus = async id => {
+  const { data, error } = await supabase
+    .from('invoice')
+    .select('payment_status')
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  return data.payment_status;
+};
+
+const notifySafely = async (method, invoice) => {
+  try {
+    await notificationService[method](invoice);
+  } catch (error) {
+    console.warn('Unable to display invoice notification:', error);
+  }
+};
 
 // ─────────────────────────────────────────────
 // 🔹 DB → App Model
@@ -124,12 +153,16 @@ export const invoiceService = {
 
     if (error) throw error;
 
-    return mapInvoice(data);
+    const invoice = mapInvoice(data);
+    await refreshNotificationSchedules();
+    await notifySafely('notifyInvoiceCreated', invoice);
+    return invoice;
   },
 
   // ✅ Update
 
   async update(id, payload) {
+    const previousPaymentStatus = await getPaymentStatus(id);
     const { data, error } = await supabase
       .from('invoice')
       .update({
@@ -149,7 +182,15 @@ export const invoiceService = {
 
     if (error) throw error;
 
-    return mapInvoice(data);
+    const invoice = mapInvoice(data);
+    if (
+      previousPaymentStatus?.toUpperCase() !== 'PAID' &&
+      invoice.paymentStatus?.toUpperCase() === 'PAID'
+    ) {
+      await notifySafely('notifyPaymentReceived', invoice);
+    }
+    await refreshNotificationSchedules();
+    return invoice;
   },
 
   // ✅ Update payment status
@@ -159,6 +200,7 @@ export const invoiceService = {
     paymentStatus,
     paymentMode = null,
   ) {
+    const previousPaymentStatus = await getPaymentStatus(id);
     const { data, error } = await supabase
       .from('invoice')
       .update({
@@ -167,12 +209,27 @@ export const invoiceService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        customer (
+          id,
+          name,
+          mobile
+        )
+      `)
       .single();
 
     if (error) throw error;
 
-    return mapInvoice(data);
+    const invoice = mapInvoice(data);
+    if (
+      previousPaymentStatus?.toUpperCase() !== 'PAID' &&
+      invoice.paymentStatus?.toUpperCase() === 'PAID'
+    ) {
+      await notifySafely('notifyPaymentReceived', invoice);
+    }
+    await refreshNotificationSchedules();
+    return invoice;
   },
 
   // ✅ Mark Paid Shortcut
@@ -196,6 +253,8 @@ export const invoiceService = {
       .eq('id', id);
 
     if (error) throw error;
+
+    await refreshNotificationSchedules();
 
     return true;
   },

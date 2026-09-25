@@ -214,6 +214,8 @@ export default function Step4({ route, navigation }) {
       const options = {
         html,
         fileName: buildPdfFileName(),
+        width: 595,
+        height: 842,
         // No `directory` option: keeps the PDF in the app's cache/tmp dir,
         // which react-native-share's FileProvider config actually exposes.
         // 'Documents' saves outside that config and breaks Share with
@@ -559,10 +561,7 @@ export default function Step4({ route, navigation }) {
                   <Text style={styles.infoText}>
                     Vickramasingapuram - 627425
                   </Text>
-                  <View style={styles.inlineRow}>
-                    <Mail size={14} color={COLORS.primary} />
-                    <Text style={styles.infoText}>kingincare@gmail.com</Text>
-                  </View>
+                  
 
                   <View style={styles.inlineRow}>
                     <PhoneCall size={14} color={COLORS.primary} />
@@ -841,7 +840,7 @@ export default function Step4({ route, navigation }) {
                     <Text style={styles.pdfActionText}>{t('invoicePreview.share')}</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
+                  {/* <TouchableOpacity
                     style={styles.pdfPrintBtn}
                     onPress={handleSavePdf}
                     disabled={!pdfFilePath || downloading}
@@ -854,7 +853,7 @@ export default function Step4({ route, navigation }) {
                     <Text style={styles.pdfActionText}>
                       {downloading ? t('invoicePreview.saving') : t('invoicePreview.download')}
                     </Text>
-                  </TouchableOpacity>
+                  </TouchableOpacity> */}
                 </View>
               </SafeAreaView>
             </Modal>

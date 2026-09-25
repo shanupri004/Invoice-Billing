@@ -13,6 +13,7 @@ import InvoiceForm from '../screens/InvoiceForm';
 import LabourInvoiceForm from '../screens/LabourInvoiceForm';
 import InvoiceListScreen from '../screens/InvoiceListScreen';
 import SettingScreen from '../screens/Settings';
+import NetworkStatusModal from '../components/NetworkStatusModal';
 
 const Stack = createNativeStackNavigator();
 
@@ -59,6 +60,7 @@ export default function AppNavigator() {
         <Stack.Screen name="InvoiceList" component={InvoiceListScreen} />
         <Stack.Screen name="Settings" component={SettingScreen} />
       </Stack.Navigator>
+      <NetworkStatusModal />
     </NavigationContainer>
   );
 }

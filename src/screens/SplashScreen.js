@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { COLORS } from '../constants/Colors';
 import Icon from '../assets/svg/setting.svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
+
+const logoFontFamily = Platform.select({
+  ios: 'Monotype Corsiva',
+  android: 'Monotype-Corsiva-Regular',
+  default: 'Monotype Corsiva',
+});
 
 export default function SplashScreen({ navigation }) {
   const { t } = useTranslation();
@@ -17,7 +23,7 @@ export default function SplashScreen({ navigation }) {
 
     const timer = setTimeout(() => {
       navigation.replace('Login');
-    }, 5000);
+    }, 500000000000000000000000000000);
 
     return () => {
       clearInterval(textInterval);
@@ -75,9 +81,9 @@ const styles = StyleSheet.create({
   },
   logo: {
     color: 'white',
-    fontSize: 28,
-    fontWeight: 'bold',
-    fontFamily: 'Monotype-Corsiva-Regular',
+    fontSize: 90,
+    fontWeight: 'normal',
+    fontFamily: logoFontFamily,
   },
   sub: {
     color: 'white',

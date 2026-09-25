@@ -68,8 +68,8 @@ const InvoiceListScreen = ({ navigation }) => {
     endDate: null,
   });
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [localStartDate, setLocalStartDate] = useState(new Date());
-  const [localEndDate, setLocalEndDate] = useState(new Date());
+  const [localStartDate, setLocalStartDate] = useState(null);
+  const [localEndDate, setLocalEndDate] = useState(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
@@ -120,6 +120,10 @@ const InvoiceListScreen = ({ navigation }) => {
           ? new Date(dateRangeFilter.endDate)
           : null;
 
+        if (endDate) {
+          endDate.setHours(23, 59, 59, 999);
+        }
+
         if (startDate && invoiceDate < startDate) return false;
         if (endDate && invoiceDate > endDate) return false;
         return true;
@@ -159,8 +163,8 @@ const InvoiceListScreen = ({ navigation }) => {
     setInvoiceTypeFilter('ALL');
     setDateRangeFilter({ startDate: null, endDate: null });
     setSearch('');
-    setLocalStartDate(new Date());
-    setLocalEndDate(new Date());
+    setLocalStartDate(null);
+    setLocalEndDate(null);
   };
 
   const onStartDateChange = (event, selectedDate) => {
@@ -478,16 +482,18 @@ const InvoiceListScreen = ({ navigation }) => {
                       >
                         <Calendar size={18} color={COLORS.primary} />
                         <Text style={styles.datePickerText}>
-                          {localStartDate.toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
+                          {localStartDate
+                            ? localStartDate.toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : t('invoiceList.selectStartDate')}
                         </Text>
                       </TouchableOpacity>
                       {showStartDatePicker && (
                         <DateTimePicker
-                          value={localStartDate}
+                          value={localStartDate || new Date()}
                           mode="date"
                           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                           onChange={onStartDateChange}
@@ -503,16 +509,18 @@ const InvoiceListScreen = ({ navigation }) => {
                       >
                         <Calendar size={18} color={COLORS.primary} />
                         <Text style={styles.datePickerText}>
-                          {localEndDate.toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
+                          {localEndDate
+                            ? localEndDate.toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : t('invoiceList.selectEndDate')}
                         </Text>
                       </TouchableOpacity>
                       {showEndDatePicker && (
                         <DateTimePicker
-                          value={localEndDate}
+                          value={localEndDate || new Date()}
                           mode="date"
                           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                           onChange={onEndDateChange}

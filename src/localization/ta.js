@@ -2,6 +2,8 @@ export default {
   common: {
     cancel: 'ரத்து செய்',
     delete: 'நீக்கு',
+    tryAgain: 'மீண்டும் முயற்சி',
+    retrying: 'சரிபார்க்கிறது...',
     save: 'சேமி',
     edit: 'திருத்து',
     update: 'புதுப்பி',
@@ -23,7 +25,11 @@ export default {
     invoiceDeleted: 'விலைப்பட்டியல் வெற்றிகரமாக நீக்கப்பட்டது',
     failedDeleteInvoice: 'விலைப்பட்டியலை நீக்க முடியவில்லை ',
   },
-
+  network: {
+    offlineTitle: 'இணைய இணைப்பு இல்லை',
+    offlineMessage:
+      'சில அம்சங்களைப் பயன்படுத்த இணைய இணைப்பு தேவை. இணையத்துடன் மீண்டும் இணைந்து முயற்சிக்கவும்.',
+  },
   stepIndicator: {
     customer: 'வாடிக்கையாளர்',
     products: 'பொருட்கள்',
@@ -73,7 +79,7 @@ export default {
     logout: 'வெளியேறு',
     logoutConfirmTitle: 'உறுதியாக இருக்கிறீர்களா?',
     logoutConfirmMessage: 'நீங்கள் கணினியிலிருந்து வெளியேற்றப்படுவீர்கள்.',
-    footer: 'ஆதி இன்ஜின் சர்வீஸ் v1.0.0 (பில்ட் 2026)',
+    footer: 'ஆதி இன்ஜின் கேர் v1.0.0 (பில்ட் 2026)',
     language: 'மொழி',
     appLanguage: 'பயன்பாட்டு மொழி',
     english: 'English',
@@ -82,7 +88,7 @@ export default {
 
   dashboard: {
     title: 'டாஷ்போர்டு',
-    subtitle: 'ஆதி இன்ஜின் சர்வீஸ்',
+    subtitle: 'ஆதி இன்ஜின் கேர்',
     quickActions: 'விரைவு செயல்கள்',
     productInvoice: 'பொருள் விலைப்பட்டியல்',
     labourInvoices: 'கூலி விலைப்பட்டியல்கள்',
@@ -118,7 +124,7 @@ export default {
   createCustomer: {
     editTitle: 'வாடிக்கையாளரைத் திருத்து',
     addTitle: 'வாடிக்கையாளரைச் சேர்',
-    subtitle: 'ஆதி இன்ஜின் சர்வீஸ்',
+    subtitle: 'ஆதி இன்ஜின் கேர்',
     heading: 'வாடிக்கையாளர் விவரங்கள்',
     descriptionEdit: 'கீழே உள்ள வாடிக்கையாளர் தகவலைப் புதுப்பிக்கவும்',
     descriptionAdd:
@@ -188,7 +194,7 @@ export default {
     unknownCustomer: 'தெரியாத வாடிக்கையாளர்',
     items: 'பொருட்கள்',
     itemCount: '{{count}} {{itemWord}}',
-    item: 'பொருலள்',
+    item: 'பொருள்',
     itemsWord: 'பொருட்கள்',
     tapToView: 'விலைப்பட்டியல் விவரங்களைக் காண தட்டவும்',
     noInvoicesFound: 'விலைப்பட்டியல்கள் இல்லை',
@@ -252,5 +258,29 @@ export default {
     paymentUpdated: 'விலைப்பட்டியல் செலுத்தப்பட்டதாகக் குறிக்கப்பட்டது ',
     failedToUpdatePayment: 'கட்டண நிலையைப் புதுப்பிக்க முடியவில்லை ',
     couldNotRenderPdf: 'PDF முன்னோட்டத்தைக் காட்ட முடியவில்லை.',
+  },
+  notifications: {
+    sectionTitle: 'அறிவிப்புகள்',
+    paymentReminders: 'அறிவிப்புகள்',
+    paymentRemindersDescription:
+      'கட்டண நினைவூட்டல்கள், வாராந்திர சுருக்கம் மற்றும் பில் அறிவிப்புகளைப் பெறுங்கள்.',
+    permissionTitle: 'அறிவிப்புகள் முடக்கப்பட்டுள்ளன',
+    permissionMessage:
+      'கட்டண நினைவூட்டல்களைப் பெற சாதன அமைப்புகளில் அறிவிப்புகளை அனுமதிக்கவும்.',
+    setupFailed: 'கட்டண நினைவூட்டல்களை அமைக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+    channelName: 'கட்டண நினைவூட்டல்கள்',
+    unknownCustomer: 'உங்கள் வாடிக்கையாளர்',
+    pendingTitle: 'கட்டணம் இன்னும் நிலுவையில் உள்ளது',
+    pendingMessage:
+      '{{customer}}-க்கான பில் #{{billNo}} ({{amount}}) கட்டணம் {{days}} நாட்களாகியும் நிலுவையில் உள்ளது.',
+    weeklyTitle: 'வாராந்திர நிலுவைக் கட்டணச் சுருக்கம்',
+    weeklyMessage:
+      '{{count}} பில்களுக்கான மொத்த நிலுவைத் தொகை {{amount}}.',
+    invoiceCreatedTitle: 'புதிய பில் உருவாக்கப்பட்டது',
+    invoiceCreatedMessage:
+      '{{customer}}-க்கான {{amount}} மதிப்புள்ள பில் #{{billNo}} சேமிக்கப்பட்டது.',
+    paymentReceivedTitle: 'கட்டணம் பெறப்பட்டது',
+    paymentReceivedMessage:
+      '{{customer}}-க்கான பில் #{{billNo}}-இன் {{amount}} கட்டணம் பெறப்பட்டதாகப் பதிவு செய்யப்பட்டது.',
   },
 };
