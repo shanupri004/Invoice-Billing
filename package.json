@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
-    "android:dev": "react-native run-android --mode developmentDebug",
+    "android:dev": "react-native run-android --mode developmentDebug --appIdSuffix dev",
     "android:prod": "react-native run-android --mode productionDebug",
     "build:android:dev": "cd android && ./gradlew assembleDevelopmentRelease",
     "build:android:prod": "cd android && ./gradlew assembleProductionRelease",

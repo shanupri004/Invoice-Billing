@@ -156,8 +156,8 @@ export const invoiceService = {
 
   const invoice = mapInvoice(data);
 
-  await refreshNotificationSchedules();
   await notifySafely('notifyInvoiceCreated', invoice);
+  await refreshNotificationSchedules();
 
   return invoice;
 },

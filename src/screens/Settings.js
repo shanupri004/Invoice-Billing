@@ -26,9 +26,12 @@ export default function SettingScreen({ navigation }) {
 
   React.useEffect(() => {
     let active = true;
-    notificationService.isEnabled().then(enabled => {
+    Promise.all([
+      notificationService.isEnabled(),
+      notificationService.hasPermission(),
+    ]).then(([enabled, permitted]) => {
       if (active) {
-        setRemindersEnabled(enabled);
+        setRemindersEnabled(enabled && permitted);
         setSavingReminderSetting(false);
       }
     });
