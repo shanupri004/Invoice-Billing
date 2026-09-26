@@ -135,6 +135,7 @@ export const invoiceService = {
     return mapInvoice(data);
   },
 
+  
   // ✅ Create
 
   async create(payload) {
@@ -151,13 +152,15 @@ export const invoiceService = {
       `)
       .single();
 
-    if (error) throw error;
+  if (error) throw error;
 
-    const invoice = mapInvoice(data);
-    await refreshNotificationSchedules();
-    await notifySafely('notifyInvoiceCreated', invoice);
-    return invoice;
-  },
+  const invoice = mapInvoice(data);
+
+  await refreshNotificationSchedules();
+  await notifySafely('notifyInvoiceCreated', invoice);
+
+  return invoice;
+},
 
   // ✅ Update
 

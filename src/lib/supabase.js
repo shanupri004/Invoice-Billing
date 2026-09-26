@@ -1,15 +1,15 @@
 import 'react-native-url-polyfill/auto';
 
 import { createClient } from '@supabase/supabase-js';
+import Config from 'react-native-config';
 
-// const SUPABASE_URL = 'https://cvfjxgnszphvrrjjrurh.supabase.co';
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = Config;
 
-// const SUPABASE_ANON_KEY =
-//   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2Zmp4Z25zenBodnJyampydXJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NzExNDYsImV4cCI6MjA5MDU0NzE0Nn0.iMbbmT90h9pAvVh7kXPXeu7WgAqG8-pZEOPScKFhrEU';
+console.log('SUPABASE_URL:', SUPABASE_URL);
 
-const SUPABASE_URL = 'https://eowpmevkqipckhgplhey.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvd3BtZXZrcWlwY2toZ3BsaGV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMDE1MzAsImV4cCI6MjA5NTg3NzUzMH0.Ffm7JYMRdq3eh9ZPA_CaFIG0MFlyf2f0GuYOm5LTf8E';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set for this build.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {

@@ -1,5 +1,29 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+## Development and Production Builds
+
+The app uses `.env.development` for development builds and `.env.production` for production builds. Copy `.env.example` to both files and set each environment's `SUPABASE_URL` and `SUPABASE_ANON_KEY`. These files are ignored by Git; never put Supabase service-role keys or Android signing credentials in them.
+
+Android:
+
+```sh
+npm run android:dev
+npm run android:prod
+npm run build:android:dev
+npm run build:android:prod
+```
+
+The Android development package ID is `com.invoicebilling.dev`; production uses `com.invoicebilling`. Release builds are unsigned unless all four signing variables are set: `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
+
+iOS uses the development environment for Debug and production for Release:
+
+```sh
+npm run ios:dev
+npm run ios:prod
+```
+
+Install CocoaPods dependencies after adding or changing native packages with `cd ios && bundle exec pod install`.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

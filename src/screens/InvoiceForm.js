@@ -284,9 +284,9 @@ useEffect(() => {
 
       navigation.navigate('previewInvoice', { invoiceId: res.id || res._id });
     } catch (err) {
-      console.error('ERROR:', err.details);
+      console.error('ERROR:', err.message);
       Alert.alert(
-        err.details
+        err.message
       );
     } finally {
       setSubmitting(false);
