@@ -2,11 +2,19 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+project.ext.envConfigFiles = [
+    development: ".env.development",
+    production: ".env.production",
+]
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
 react {
+    debuggableVariants = ["developmentDebug", "productionDebug"]
+
     /* Folders */
     //   The root of your project, i.e. where "package.json" lives. Default is '../..'
     // root = file("../../")
@@ -72,6 +80,17 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+def releaseSigningValues = [
+    storeFile: System.getenv("ANDROID_KEYSTORE_FILE"),
+    storePassword: System.getenv("ANDROID_KEYSTORE_PASSWORD"),
+    keyAlias: System.getenv("ANDROID_KEY_ALIAS"),
+    keyPassword: System.getenv("ANDROID_KEY_PASSWORD"),
+]
+def hasReleaseSigning = releaseSigningValues.values().every { it }
+if (releaseSigningValues.values().any { it } && !hasReleaseSigning) {
+    throw new GradleException("Set all Android release signing environment variables to sign release builds.")
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -85,6 +104,18 @@ android {
         versionCode 1
         versionName "1.0"
     }
+    flavorDimensions "environment"
+    productFlavors {
+        development {
+            dimension "environment"
+            applicationIdSuffix ".dev"
+            resValue "string", "app_name", "Invoice Billing Dev"
+        }
+        production {
+            dimension "environment"
+            resValue "string", "app_name", "Invoice Billing"
+        }
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -92,15 +123,23 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseSigningValues.storeFile)
+                storePassword releaseSigningValues.storePassword
+                keyAlias releaseSigningValues.keyAlias
+                keyPassword releaseSigningValues.keyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
