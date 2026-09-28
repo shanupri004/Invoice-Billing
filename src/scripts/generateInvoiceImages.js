@@ -13,4 +13,3 @@ export const Sign = "data:image/png;base64,${signBase64}";
 `;
 
 fs.writeFileSync(path.join(dir, 'index.js'), output);
-console.log('invoiceImages/index.js generated');

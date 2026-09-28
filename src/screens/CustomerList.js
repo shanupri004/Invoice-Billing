@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   TextInput,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   FlatList,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -21,55 +22,56 @@ import {
   X,
 } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { goBackOrHome } from '../navigation/navigationHelpers';
 import { COLORS } from '../constants/Colors';
 import ConfirmModal from '../components/ConfirmModal';
 import { customerService } from '../services/Customer';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
+import usePaginatedList, { useDebouncedValue } from '../hooks/usePaginatedList';
+
+const PAGE_SIZE = 20;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CustomerListScreen({ navigation }) {
   const { t } = useTranslation();
-  const [customers, setCustomers] = useState([]);
   const [query, setQuery] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // customer to delete
 
-  // ── Filtered list ──────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter(
-      c =>
-        c.name.toLowerCase().includes(q) ||
-        c.mobile.includes(q) ||
-        c.address.toLowerCase().includes(q),
-    );
-  }, [query, customers]);
+  const debouncedQuery = useDebouncedValue(query);
 
-  const fetchCustomers = async () => {
-    try {
-      const data = await customerService.getAll();
-      console.log('Fetched customers:', data);
-      setCustomers(data);
-    } catch (err) {
-      console.error(err);
-      Alert.alert(t('common.error'), err.message);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchCustomers();
-    }, []),
+  // ── Paged list (search runs on the server) ─────────────────────────────────
+  const fetchPage = useCallback(
+    ({ page, pageSize }) =>
+      customerService.getPaged({ page, pageSize, search: debouncedQuery }),
+    [debouncedQuery],
   );
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchCustomers();
-    setRefreshing(false);
-  };
+  const {
+    items: customers,
+    total,
+    initialLoading,
+    reloading,
+    refreshing,
+    loadingMore,
+    reload,
+    refresh: onRefresh,
+    loadMore,
+  } = usePaginatedList(fetchPage, {
+    pageSize: PAGE_SIZE,
+    onError: err => {
+      console.error(err);
+      Alert.alert(t('common.error'), err.message);
+    },
+  });
+
+  // Reloads from page 0 on focus and whenever the search changes
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleEdit = customer => {
@@ -83,7 +85,7 @@ export default function CustomerListScreen({ navigation }) {
   const handleDelete = async () => {
     try {
       await customerService.remove(deleteTarget.id);
-      fetchCustomers(); // refresh after delete
+      reload(); // refresh after delete
       setDeleteTarget(null);
     } catch (err) {
       Alert.alert(t('common.error'), err.message);
@@ -154,11 +156,11 @@ export default function CustomerListScreen({ navigation }) {
     <View style={styles.emptyContainer}>
       <User size={52} color="#d1d5db" />
       <Text style={styles.emptyTitle}>
-        {query ? t('customerList.noResultsFound') : t('customerList.noCustomersYet')}
+        {debouncedQuery ? t('customerList.noResultsFound') : t('customerList.noCustomersYet')}
       </Text>
       <Text style={styles.emptySubtitle}>
-        {query
-          ? t('customerList.nothingMatched', { query })
+        {debouncedQuery
+          ? t('customerList.nothingMatched', { query: debouncedQuery })
           : t('customerList.tapToAdd')}
       </Text>
     </View>
@@ -171,7 +173,7 @@ export default function CustomerListScreen({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Dashboard')}
+            onPress={() => goBackOrHome(navigation)}
             hitSlop={8}
           >
             <ChevronLeft size={30} color="#111" />
@@ -180,8 +182,8 @@ export default function CustomerListScreen({ navigation }) {
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.title}>{t('customerList.title')}</Text>
             <Text style={styles.subtitle}>
-              {customers.length}{' '}
-              {customers.length <= 1 ? t('customerList.record') : t('customerList.records')}
+              {total}{' '}
+              {total <= 1 ? t('customerList.record') : t('customerList.records')}
             </Text>
           </View>
 
@@ -206,6 +208,9 @@ export default function CustomerListScreen({ navigation }) {
             returnKeyType="search"
             autoCapitalize="none"
           />
+          {reloading && !refreshing && (
+            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginRight: 8 }} />
+          )}
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')} hitSlop={8}>
               <X size={18} color="#9ca3af" />
@@ -214,34 +219,45 @@ export default function CustomerListScreen({ navigation }) {
         </View>
 
         {/* Count badge when filtering */}
-        {query.length > 0 && (
+        {debouncedQuery.length > 0 && !reloading && (
           <Text style={styles.resultCount}>
             {t('customerList.resultsFor', {
-              count: filtered.length,
+              count: total,
               resultWord:
-                filtered.length !== 1
+                total !== 1
                   ? t('customerList.results')
                   : t('customerList.result'),
-              query,
+              query: debouncedQuery,
             })}
           </Text>
         )}
 
         {/* List */}
         <FlatList
-          data={filtered}
-          keyExtractor={item => item.id}
+          data={customers}
+          keyExtractor={item => String(item.id)}
           renderItem={renderItem}
-          ListEmptyComponent={renderEmpty}
+          ListEmptyComponent={initialLoading || reloading ? null : renderEmpty}
           contentContainerStyle={[
             styles.listContent,
-            filtered.length === 0 && { flex: 1 },
+            customers.length === 0 && { flex: 1 },
           ]}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator style={{ marginVertical: 16 }} color={COLORS.primary} />
+            ) : null
+          }
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS === 'android'}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          refreshing={refreshing} // ✅ ADD
-          onRefresh={onRefresh} // ✅ ADD
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         />
       </View>
 

@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import {COLORS} from '../constants/Colors';
 import { useTranslation } from '../localization/LanguageContext';
 import { NoFontScale } from '../components/AppText';
+import usePaginatedList, { useDebouncedValue } from '../hooks/usePaginatedList';
+
+const PAGE_SIZE = 20;
 
 const SkeletonCard = () => (
   <View style={styles.skeletonCard}>
@@ -44,6 +47,100 @@ const SkeletonCard = () => (
   </View>
 );
 
+const InvoiceCard = memo(({ item, t, onPress }) => {
+  return (
+    <TouchableOpacity
+      style={styles.invoiceCard}
+      activeOpacity={0.9}
+      onPress={() => onPress(item.id)}
+    >
+      <View style={styles.cardHeader}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.codeRow}>
+            <Text style={styles.invoiceCode}>
+              {t('invoiceList.billNoPrefix', { no: item.billNo })}
+            </Text>
+            <View
+              style={[
+                styles.badge,
+                item.paymentStatus === 'PAID'
+                  ? styles.paidBadge
+                  : styles.pendingBadge,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.badgeText,
+                  item.paymentStatus === 'PAID'
+                    ? styles.paidText
+                    : styles.pendingText,
+                ]}
+              >
+                {item.paymentStatus === 'PAID' ? t('common.paid') : t('common.pending')}
+              </Text>
+            </View>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeBadgeText}>
+                {item.invoiceType === 'LABOUR' ? t('invoiceList.labour') : t('invoiceList.product')}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.invoiceDate}>
+            {new Date(item.invoiceDate).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </Text>
+        </View>
+
+        <View style={styles.amountPill}>
+          <Text style={styles.amountLabel}>{t('invoiceList.total')}</Text>
+          <Text style={styles.amountText}>
+            ₹{Number(item?.totalAmount).toFixed(2)}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.customerSection}>
+        <View style={styles.avatarCircle}>
+          <User size={18} color={COLORS.primary} />
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.customerName} numberOfLines={1}>
+            {item.customer?.name || t('invoiceList.unknownCustomer')}
+          </Text>
+          <Text style={styles.mobileText} numberOfLines={1}>
+            {item.customer?.mobile || '-'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.itemPreview}>
+        <Text style={styles.itemPreviewTitle}>{t('invoiceList.items')}</Text>
+        <Text style={styles.itemPreviewValue}>
+          {t('invoiceList.itemCount', {
+            count: item.items?.length || 0,
+            itemWord:
+              (item.items?.length || 0) !== 1
+                ? t('invoiceList.itemsWord')
+                : t('invoiceList.item'),
+          })}
+        </Text>
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.bottomRow}>
+        <Text style={styles.bottomHint}>{t('invoiceList.tapToView')}</Text>
+        <Text style={styles.arrowText}>›</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 const InvoiceListScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const statusFilterLabels = {
@@ -56,10 +153,6 @@ const InvoiceListScreen = ({ navigation }) => {
     PRODUCT: t('invoiceList.product'),
     LABOUR: t('invoiceList.labour'),
   };
-  const [invoices, setInvoices] = useState([]);
-  const [filteredInvoices, setFilteredInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [invoiceTypeFilter, setInvoiceTypeFilter] = useState('ALL');
@@ -73,82 +166,55 @@ const InvoiceListScreen = ({ navigation }) => {
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
-  const loadInvoices = async () => {
-    try {
-      const data = await invoiceService.getAll();
-      console.log('Loaded Invoices:', data);
-      setInvoices(data);
-      setFilteredInvoices(data);
-    } catch (error) {
-      console.log('Invoice Load Error:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const debouncedSearch = useDebouncedValue(search);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadInvoices();
-    }, [])
+  const fetchPage = useCallback(
+    ({ page, pageSize }) =>
+      invoiceService.getPaged({
+        page,
+        pageSize,
+        status: statusFilter,
+        type: invoiceTypeFilter,
+        startDate: dateRangeFilter.startDate,
+        endDate: dateRangeFilter.endDate,
+        search: debouncedSearch,
+      }),
+    [statusFilter, invoiceTypeFilter, dateRangeFilter, debouncedSearch],
   );
 
-  useEffect(() => {
-    let data = [...invoices];
+  const {
+    items: invoices,
+    total,
+    initialLoading: loading,
+    reloading,
+    refreshing,
+    loadingMore,
+    reload,
+    refresh: onRefresh,
+    loadMore,
+  } = usePaginatedList(fetchPage, {
+    pageSize: PAGE_SIZE,
+    onError: error => console.log('Invoice Load Error:', error),
+  });
 
-    if (statusFilter !== 'ALL') {
-      data = data.filter(
-        item =>
-          item.paymentStatus?.toUpperCase() === statusFilter.toUpperCase()
-      );
-    }
+  const hasActiveFilters =
+    statusFilter !== 'ALL' ||
+    invoiceTypeFilter !== 'ALL' ||
+    !!dateRangeFilter.startDate ||
+    !!dateRangeFilter.endDate ||
+    !!debouncedSearch.trim();
 
-    if (invoiceTypeFilter !== 'ALL') {
-      data = data.filter(
-        item =>
-          item.invoiceType?.toUpperCase() === invoiceTypeFilter.toUpperCase()
-      );
-    }
+  // Reloads from page 0 on focus and whenever a filter/search changes
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
 
-    if (dateRangeFilter.startDate || dateRangeFilter.endDate) {
-      data = data.filter(item => {
-        const invoiceDate = new Date(item.invoiceDate);
-        const startDate = dateRangeFilter.startDate
-          ? new Date(dateRangeFilter.startDate)
-          : null;
-        const endDate = dateRangeFilter.endDate
-          ? new Date(dateRangeFilter.endDate)
-          : null;
-
-        if (endDate) {
-          endDate.setHours(23, 59, 59, 999);
-        }
-
-        if (startDate && invoiceDate < startDate) return false;
-        if (endDate && invoiceDate > endDate) return false;
-        return true;
-      });
-    }
-
-    if (search.trim()) {
-      const searchLower = search.toLowerCase();
-      data = data.filter(item => {
-        // const matchesInvoiceCode = item.invoiceCode?.toLowerCase().includes(searchLower);
-        const matchesCustomerId = String(item.customerId).toLowerCase().includes(searchLower);
-        const matchesCustomerName = item.customer?.name?.toLowerCase().includes(searchLower);
-        const matchesMobile = item.customer?.mobile?.toString().includes(searchLower);
-        
-        return matchesCustomerId || matchesCustomerName || matchesMobile;
-      });
-    }
-
-    setFilteredInvoices(data);
-  }, [search, statusFilter, invoiceTypeFilter, dateRangeFilter, invoices]);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    loadInvoices();
-  }, []);
+  const openInvoice = useCallback(
+    invoiceId => navigation.navigate('previewInvoice', { invoiceId }),
+    [navigation],
+  );
 
   const handleApplyDateFilter = () => {
     const startDate = localStartDate;
@@ -181,119 +247,21 @@ const InvoiceListScreen = ({ navigation }) => {
     }
   };
 
-  const renderInvoice = ({ item }) => {
-    const grandTotal = item.items?.reduce(
-      (total, current) => total + current.qty * current.unitPrice,
-      0
-    );
-    
-    return (
-      <TouchableOpacity
-        style={styles.invoiceCard}
-        activeOpacity={0.9}
-        onPress={() =>
-          navigation.navigate('previewInvoice', {
-            invoiceId: item.id,
-          })
-        }
-      >
-        <View style={styles.cardHeader}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.codeRow}>
-              <Text style={styles.invoiceCode}>
-                {t('invoiceList.billNoPrefix', { no: item.billNo })}
-              </Text>
-              <View
-                style={[
-                  styles.badge,
-                  item.paymentStatus === 'PAID'
-                    ? styles.paidBadge
-                    : styles.pendingBadge,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.badgeText,
-                    item.paymentStatus === 'PAID'
-                      ? styles.paidText
-                      : styles.pendingText,
-                  ]}
-                >
-                  {item.paymentStatus === 'PAID' ? t('common.paid') : t('common.pending')}
-                </Text>
-              </View>
-              <View style={styles.typeBadge}>
-                <Text style={styles.typeBadgeText}>
-                  {item.invoiceType === 'LABOUR' ? t('invoiceList.labour') : t('invoiceList.product')}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={styles.invoiceDate}>
-              {new Date(item.invoiceDate).toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </Text>
-          </View>
-
-          <View style={styles.amountPill}>
-            <Text style={styles.amountLabel}>{t('invoiceList.total')}</Text>
-            <Text style={styles.amountText}>
-              ₹{Number(item?.totalAmount).toFixed(2)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.customerSection}>
-          <View style={styles.avatarCircle}>
-            <User size={18} color={COLORS.primary} />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={styles.customerName} numberOfLines={1}>
-              {item.customer?.name || t('invoiceList.unknownCustomer')}
-            </Text>
-            <Text style={styles.mobileText} numberOfLines={1}>
-              {item.customer?.mobile || '-'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.itemPreview}>
-          <Text style={styles.itemPreviewTitle}>{t('invoiceList.items')}</Text>
-          <Text style={styles.itemPreviewValue}>
-            {t('invoiceList.itemCount', {
-              count: item.items?.length || 0,
-              itemWord:
-                (item.items?.length || 0) !== 1
-                  ? t('invoiceList.itemsWord')
-                  : t('invoiceList.item'),
-            })}
-          </Text>
-        </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.bottomRow}>
-          <Text style={styles.bottomHint}>{t('invoiceList.tapToView')}</Text>
-          <Text style={styles.arrowText}>›</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderInvoice = useCallback(
+    ({ item }) => <InvoiceCard item={item} t={t} onPress={openInvoice} />,
+    [t, openInvoice],
+  );
 
   const EmptyComponent = () => (
     <View style={styles.emptyContainer}>
       <FileText  size={80} color="#D1D5DB" />
       <Text style={styles.emptyTitle}>{t('invoiceList.noInvoicesFound')}</Text>
       <Text style={styles.emptySubtitle}>
-        {invoices.length === 0
+        {!hasActiveFilters
           ? t('invoiceList.createFirst')
           : t('invoiceList.adjustFilters')}
       </Text>
-      {invoices.length > 0 && (
+      {hasActiveFilters && (
         <TouchableOpacity
           style={styles.clearFiltersButton}
           onPress={handleClearFilters}
@@ -349,6 +317,9 @@ const InvoiceListScreen = ({ navigation }) => {
           style={styles.searchInput}
           placeholderTextColor={"black"}
         />
+        {reloading && !refreshing && (
+          <ActivityIndicator size="small" color={COLORS.primary} style={{ marginRight: 8 }} />
+        )}
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch('')}>
             <X size={18} color="#6B7280" />
@@ -370,11 +341,14 @@ const InvoiceListScreen = ({ navigation }) => {
             </View>
           )}
         </TouchableOpacity>
+        <Text style={styles.totalCountText}>
+          {total} {t('invoiceList.records')}
+        </Text>
       </View>
 
       {/* Invoice List */}
       <FlatList
-        data={filteredInvoices}
+        data={invoices}
         keyExtractor={item => item.id.toString()}
         renderItem={renderInvoice}
         contentContainerStyle={{
@@ -383,7 +357,19 @@ const InvoiceListScreen = ({ navigation }) => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        ListEmptyComponent={<EmptyComponent />}
+        ListEmptyComponent={reloading ? null : <EmptyComponent />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator style={{ marginVertical: 16 }} color={COLORS.primary} />
+          ) : null
+        }
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
+        keyboardShouldPersistTaps="handled"
       />
 
       {/* FAB */}
@@ -606,6 +592,13 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
     marginLeft: 6,
+  },
+
+  totalCountText: {
+    marginLeft: 'auto',
+    color: '#6b7280',
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   filterBadge: {

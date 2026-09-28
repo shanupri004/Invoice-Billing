@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, {
+  AlarmType,
+  AndroidImportance,
   AuthorizationStatus,
   TriggerType,
 } from '@notifee/react-native';
@@ -13,7 +15,10 @@ import te from '../localization/te';
 const ENABLED_KEY = 'pendingInvoiceRemindersEnabled';
 const ENABLED_AT_KEY = 'pendingInvoiceRemindersEnabledAt';
 const LANGUAGE_KEY = 'appLanguage';
-const CHANNEL_ID = 'pending-invoice-reminders';
+// Channel importance can't change after creation, so the high-importance
+// channel needs a new id; the old default-importance one is deleted.
+const CHANNEL_ID = 'invoice-alerts';
+const LEGACY_CHANNEL_ID = 'pending-invoice-reminders';
 const NOTIFICATION_PREFIX = 'pending-invoice:';
 const WEEKLY_SUMMARY_ID = `${NOTIFICATION_PREFIX}weekly-summary`;
 const REMINDER_DAYS = [3, 7];
@@ -156,10 +161,11 @@ const getInvoiceReminders = (
 };
 
 const ensureChannel = async language => {
+  await notifee.deleteChannel(LEGACY_CHANNEL_ID);
   await notifee.createChannel({
     id: CHANNEL_ID,
     name: getText(language, 'channelName'),
-    importance: 3,
+    importance: AndroidImportance.HIGH,
   });
 };
 
@@ -173,13 +179,23 @@ const cancelIds = async ids => {
 };
 
 export const notificationService = {
+  // On by default; only an explicit opt-out in Settings turns it off.
   async isEnabled() {
-    return (await AsyncStorage.getItem(ENABLED_KEY)) === 'true';
+    return (await AsyncStorage.getItem(ENABLED_KEY)) !== 'false';
+  },
+
+  async hasPermission() {
+    const settings = await notifee.getNotificationSettings();
+    return settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED;
+  },
+
+  async requestPermission() {
+    const settings = await notifee.requestPermission();
+    return settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED;
   },
 
   async enable(language) {
-    const settings = await notifee.requestPermission();
-    if (settings.authorizationStatus < AuthorizationStatus.AUTHORIZED) {
+    if (!(await this.requestPermission())) {
       return false;
     }
 
@@ -190,7 +206,7 @@ export const notificationService = {
   },
 
   async disable() {
-    await AsyncStorage.removeItem(ENABLED_KEY);
+    await AsyncStorage.setItem(ENABLED_KEY, 'false');
     await AsyncStorage.removeItem(ENABLED_AT_KEY);
     await this.cancelAll();
   },
@@ -263,6 +279,8 @@ export const notificationService = {
       await notifee.createTriggerNotification(reminder.notification, {
         type: TriggerType.TIMESTAMP,
         timestamp: reminder.timestamp,
+        // WorkManager (the default) can defer or drop triggers under Doze.
+        alarmManager: { type: AlarmType.SET_AND_ALLOW_WHILE_IDLE },
       });
     }
   },

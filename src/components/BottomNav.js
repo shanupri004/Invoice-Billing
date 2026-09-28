@@ -4,6 +4,7 @@ import { Home, PlusCircle, FileText, BicepsFlexed } from 'lucide-react-native';
 import { COLORS } from '../constants/Colors';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from './AppText';
+import { navigateBackTo } from '../navigation/navigationHelpers';
 
 export default function BottomNav({ navigation, active }) {
   const { t } = useTranslation();
@@ -24,7 +25,7 @@ export default function BottomNav({ navigation, active }) {
           <TouchableOpacity
             key={index}
             style={styles.tab}
-            onPress={() => navigation.navigate(tab.screen)}
+            onPress={() => navigateBackTo(navigation, tab.screen)}
           >
             <Icon
               size={32}

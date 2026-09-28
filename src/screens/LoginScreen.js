@@ -19,27 +19,41 @@ export default function LoginScreen({ navigation }) {
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
 
+  const [verifying, setVerifying] = useState(false);
+
   const handlePress = num => {
-    if (pin.length >= 4) return;
+    if (verifying || pin.length >= 4) return;
     const newPin = pin + num;
     setPin(newPin);
     if (newPin.length === 4) handleLogin(newPin);
   };
 
-  const handleDelete = () => setPin(prev => prev.slice(0, -1));
+  const handleDelete = () => {
+    if (!verifying) setPin(prev => prev.slice(0, -1));
+  };
 
   const handleLogin = async enteredPin => {
+    setVerifying(true);
     try {
       const res = await LoginService.loginWithPin(enteredPin);
 
       if (res.success) {
         navigation.replace('Dashboard');
+        return;
+      }
+
+      if (res.locked) {
+        const minutes = Math.max(1, Math.ceil(res.retryAfterSeconds / 60));
+        Alert.alert(t('common.error'), t('login.tooManyAttempts', { minutes }));
       } else {
         Alert.alert(t('common.error'), t('login.wrongPin'));
-        setPin('');
       }
+      setPin('');
     } catch (err) {
       Alert.alert(t('common.error'), t('login.somethingWrong'));
+      setPin('');
+    } finally {
+      setVerifying(false);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   TextInput,
@@ -26,12 +26,14 @@ import {
   CalendarDays,
   Hash,
 } from 'lucide-react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { COLORS } from '../constants/Colors';
 import { customerService } from '../services/Customer';
 import { invoiceService } from '../services/invoiceService';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
+import useUnsavedChangesGuard from '../hooks/useUnsavedChangesGuard';
+import { leaveDeletedInvoice } from '../navigation/navigationHelpers';
 
 const currency = n =>
   Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
@@ -43,6 +45,20 @@ const formatDate = d => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 };
+
+// Positive whole number, e.g. "12"
+const isValidBillNo = v => /^\d+$/.test(String(v).trim()) && Number(v) > 0;
+
+// Everything the user can change, used to detect unsaved changes
+const makeSnapshot = ({ customer, isPaid, paymentMode, billNo, invoiceDate, products }) =>
+  JSON.stringify({
+    customerId: customer?.id ?? null,
+    isPaid,
+    paymentMode: isPaid ? paymentMode : null,
+    billNo: String(billNo ?? '').trim(),
+    invoiceDate: formatDate(invoiceDate),
+    products: products.map(p => [p.name, Number(p.quantity), Number(p.price)]),
+  });
 
 const Field = ({ label, error, children }) => (
   <View style={{ marginBottom: 14 }}>
@@ -106,18 +122,33 @@ export default function CreateInvoiceSingle() {
   const [editingInvoiceId, setEditingInvoiceId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    const loadCustomers = async () => {
-      try {
-        const data = await customerService.getAll();
-        setCustomers(data);
-      } catch (err) {
-        console.error(err);
-      }
-    };
+  const initialSnapshotRef = useRef(null);
+  if (initialSnapshotRef.current === null) {
+    initialSnapshotRef.current = makeSnapshot({
+      customer: null,
+      isPaid: false,
+      paymentMode: 'Cash',
+      billNo: '',
+      invoiceDate: new Date(),
+      products: [],
+    });
+  }
 
-    loadCustomers();
-  }, []);
+  // Reload on focus so a customer added via the "add customer" button shows up
+  useFocusEffect(
+    useCallback(() => {
+      const loadCustomers = async () => {
+        try {
+          const data = await customerService.getAll();
+          setCustomers(data);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      loadCustomers();
+    }, []),
+  );
 
 useEffect(() => {
   const { editMode, invoiceData } = route.params || {};
@@ -133,15 +164,22 @@ useEffect(() => {
     if (invoiceData.customer) setSelectedCustomer(invoiceData.customer);
     if (invoiceData.invoiceDate) setInvoiceDate(new Date(invoiceData.invoiceDate));
 
-    if (invoiceData.items && invoiceData.items.length > 0) {
-      const items = invoiceData.items.map((item, index) => ({
-        id: Date.now() + index,
-        name: item.name,
-        quantity: item.qty,
-        price: item.unitPrice,
-      }));
-      setProducts(items);
-    }
+    const items = (invoiceData.items || []).map((item, index) => ({
+      id: Date.now() + index,
+      name: item.name,
+      quantity: item.qty,
+      price: item.unitPrice,
+    }));
+    setProducts(items);
+
+    initialSnapshotRef.current = makeSnapshot({
+      customer: invoiceData.customer,
+      isPaid: invoiceData.paymentStatus === 'PAID',
+      paymentMode: invoiceData.paymentMode || 'Cash',
+      billNo: invoiceData.bill_no ?? invoiceData.billNo ?? '',
+      invoiceDate: invoiceData.invoiceDate || new Date(),
+      products: items,
+    });
   }
 }, [route.params]);
 
@@ -152,6 +190,19 @@ useEffect(() => {
   );
 
   const totalAmount = subtotal;
+
+  const hasUnsavedChanges =
+    !!(form.name || form.quantity || form.price) ||
+    makeSnapshot({
+      customer: selectedCustomer,
+      isPaid,
+      paymentMode,
+      billNo: BillNo,
+      invoiceDate,
+      products,
+    }) !== initialSnapshotRef.current;
+
+  const allowLeave = useUnsavedChangesGuard(hasUnsavedChanges && !submitting);
 
   const validateForm = f => {
     const e = {};
@@ -229,6 +280,12 @@ useEffect(() => {
         return;
       }
 
+      if (!isValidBillNo(BillNo)) {
+        setFormErrors(e => ({ ...e, billNo: t('invoiceForm.billNoRequired') }));
+        Alert.alert(t('common.error'), t('invoiceForm.billNoRequired'));
+        return;
+      }
+
       if (products.length === 0) {
         alert(t('invoiceForm.addAtLeastOneProduct'));
         return;
@@ -244,7 +301,7 @@ useEffect(() => {
         paymentStatus: isPaid ? 'PAID' : 'PENDING',
         paymentMode: isPaid ? paymentMode : null,
 
-        bill_no: Number(BillNo),
+        bill_no: Number(BillNo.trim()),
 
         items: products.map(p => ({
           name: p.name,
@@ -255,34 +312,28 @@ useEffect(() => {
         totalAmount,
       };
 
-      console.log(payload,"======")
 
       let res;
       if (isEditMode && editingInvoiceId) {
         // Update existing invoice
-        console.log('Updating invoice with payload:', payload);
         res = await invoiceService.update(editingInvoiceId, payload);
         Alert.alert(t('common.success'), t('invoiceForm.invoiceUpdated'));
       } else {
         // Create new invoice
-        console.log('Creating invoice with payload:', payload);
         res = await invoiceService.create(payload);
         Alert.alert(t('common.success'), t('invoiceForm.invoiceCreated'));
       }
 
-      // Reset form
-      setSelectedCustomer(null);
-      setProducts([]);
-      setForm({ name: '', quantity: '', price: '' });
-      setEditId(null);
-      setEditForm({ name: '', quantity: '', price: '' });
-      setPaymentStatus('PENDING');
-      setPaymentMode('Cash');
-      setInvoiceDate(new Date());
-      setIsEditMode(false);
-      setEditingInvoiceId(null);
+      const invoiceId = res.id || res._id;
+      allowLeave();
 
-      navigation.navigate('previewInvoice', { invoiceId: res.id || res._id });
+      if (isEditMode) {
+        // Return to the preview this edit was opened from, with fresh data
+        navigation.popTo('previewInvoice', { invoiceId, refreshAt: Date.now() });
+      } else {
+        // Replace the form so back from the preview doesn't reopen it
+        navigation.replace('previewInvoice', { invoiceId });
+      }
     } catch (err) {
       console.error('ERROR:', err.message);
       Alert.alert(
@@ -309,9 +360,10 @@ useEffect(() => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await invoiceService.delete(editingInvoiceId);
+              await invoiceService.remove(editingInvoiceId);
               Alert.alert(t('common.success'), t('common.invoiceDeleted'));
-              navigation.goBack();
+              allowLeave();
+              leaveDeletedInvoice(navigation);
             } catch (error) {
               console.error('Delete error:', error);
               Alert.alert(t('common.error'), t('common.failedDeleteInvoice'));
@@ -428,7 +480,7 @@ useEffect(() => {
 
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 10 }}>
-                <Field label={t('invoiceForm.invoiceDate')} error={formErrors.quantity}>
+                <Field label={t('invoiceForm.invoiceDate')}>
                   <PillInput
                     placeholder="0"
                     // keyboardType="date"
@@ -439,14 +491,17 @@ useEffect(() => {
                 </Field>
               </View>
               <View style={{ flex: 1 }}>
-                <Field label={t('invoiceForm.billNo')} error={formErrors.price}>
+                <Field label={t('invoiceForm.billNo')} error={formErrors.billNo}>
                   <PillInput
                     icon={Hash}
                     placeholder="0"
-                    keyboardType="numeric"
+                    keyboardType="number-pad"
                     value={BillNo}
-                    onChangeText={v => setBillNo(v)}
-                    error={formErrors.setBillNo}
+                    onChangeText={v => {
+                      setBillNo(v.replace(/[^0-9]/g, ''));
+                      setFormErrors(e => ({ ...e, billNo: undefined }));
+                    }}
+                    error={formErrors.billNo}
                   />
                 </Field>
               </View>

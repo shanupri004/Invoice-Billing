@@ -40,6 +40,7 @@ import { numberToIndianWords } from '../utils/numberToIndianWords';
 import { invoiceService } from '../services/invoiceService';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
+import { goBackOrHome } from '../navigation/navigationHelpers';
 
 const SkeletonLine = ({ style }) => (
   <View style={[styles.skeletonLine, style]} />
@@ -132,16 +133,16 @@ export default function Step4({ route, navigation }) {
   const [updatingPayment, setUpdatingPayment] = useState(false);
   const [sign, setSign] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Re-runs when an edit form returns here with fresh params
   useEffect(() => {
     loadInvoice();
-  }, []);
+  }, [route?.params?.invoiceId, route?.params?.refreshAt]);
 
   const loadInvoice = async () => {
     try {
       setLoading(true);
       const invoiceID = route?.params?.invoiceId;
       const data = await invoiceService.getById(invoiceID);
-      console.log('Fetched invoice data:', data);
       setInvoiceData(data);
     } catch (error) {
       console.error('Invoice fetch error:', error);
@@ -176,9 +177,7 @@ export default function Step4({ route, navigation }) {
               const invoiceID = route?.params?.invoiceId;
               await invoiceService.remove(invoiceID);
               Alert.alert(t('common.success'), t('common.invoiceDeleted'));
-              navigation.navigate('InvoiceList', {
-                refresh: true,
-              });
+              goBackOrHome(navigation);
             } catch (error) {
               console.error('Delete error:', error);
               Alert.alert(t('common.error'), t('common.failedDeleteInvoice'));
@@ -267,9 +266,7 @@ export default function Step4({ route, navigation }) {
     const payload = { ...invoiceData, sign, amountInWords };
 
     setPdfLoading(true);
-    console.log('the payload', payload);
     try {
-      console.log('trying to reach print');
       const response = await fetch(
         'https://pdf-generator-backend-s90a.onrender.com/pdf/AES/product-invoice',
         {
@@ -382,7 +379,6 @@ export default function Step4({ route, navigation }) {
     }
 
     try {
-      console.log('Sharing PDF:', pdfFilePath);
 
       await Share.open({
         title: 'Share Invoice',
@@ -500,7 +496,7 @@ export default function Step4({ route, navigation }) {
         <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity
-              onPress={() => navigation.navigate('InvoiceList')}
+              onPress={() => goBackOrHome(navigation)}
               style={styles.iconBtn}
             >
               <ChevronLeft size={26} color="#111" />

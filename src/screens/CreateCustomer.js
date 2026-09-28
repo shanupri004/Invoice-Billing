@@ -24,6 +24,8 @@ import ConfirmModal from '../components/ConfirmModal';
 import { customerService } from '../services/Customer';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
+import useUnsavedChangesGuard from '../hooks/useUnsavedChangesGuard';
+import { goBackOrHome, navigateBackTo } from '../navigation/navigationHelpers';
 
 export default function CustomerForm({ navigation, route }) {
   const { t } = useTranslation();
@@ -40,6 +42,25 @@ export default function CustomerForm({ navigation, route }) {
   const [errors, setErrors] = useState({});
 
   const [discardModal, setDiscardModal] = useState(false);
+
+  const hasUnsavedChanges =
+    name !== (existingCustomer?.name ?? '') ||
+    mobile !== (existingCustomer?.mobile ?? '') ||
+    address !== (existingCustomer?.address ?? '');
+  const allowLeave = useUnsavedChangesGuard(hasUnsavedChanges && !loading);
+
+  // Opened from an invoice form: go back there (it reloads its customer list).
+  // Otherwise return to the existing customer list instead of stacking a new one.
+  const leaveAfterSave = () => {
+    allowLeave();
+    const { routes, index } = navigation.getState();
+    const previous = routes[index - 1]?.name;
+    if (previous === 'InvoiceForm' || previous === 'LabourInvoiceForm') {
+      navigation.goBack();
+    } else {
+      navigateBackTo(navigation, 'customer');
+    }
+  };
   const [deleteModal, setDeleteModal] = useState(false);
 
   // ── Validation ─────────────────────────────────────────────────────────────
@@ -80,7 +101,7 @@ export default function CustomerForm({ navigation, route }) {
         await customerService.create(payload);
       }
 
-      navigation.navigate('customer'); // ✅ navigate after success
+      leaveAfterSave();
     } catch (err) {
       console.error(err);
       Alert.alert(t('common.error'), err.message);
@@ -95,7 +116,8 @@ export default function CustomerForm({ navigation, route }) {
       await customerService.remove(existingCustomer.id);
       // refresh after delete
       setDeleteModal(false);
-      navigation.navigate('customer');
+      allowLeave();
+      navigateBackTo(navigation, 'customer');
     } catch (err) {
       Alert.alert(t('common.error'), err.message);
     }
@@ -104,7 +126,8 @@ export default function CustomerForm({ navigation, route }) {
   // ── Discard / close ────────────────────────────────────────────────────────
   const handleDiscard = () => {
     setDiscardModal(false);
-    navigation.goBack();
+    allowLeave();
+    goBackOrHome(navigation);
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -118,7 +141,7 @@ export default function CustomerForm({ navigation, route }) {
           {/* ── Header ── */}
           <View style={styles.header}>
             <TouchableOpacity
-              onPress={() => navigation.navigate('customer')}
+              onPress={() => goBackOrHome(navigation)}
               hitSlop={8}
             >
               <ChevronLeft size={30} color="#111" />

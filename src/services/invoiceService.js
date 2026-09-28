@@ -68,7 +68,6 @@ const mapInvoice = row => ({
 // ─────────────────────────────────────────────
 
 const toInvoice = payload => {
-  console.log(payload, 'in service');
 
   return {
     invoice_type: payload.invoiceType,
@@ -91,26 +90,106 @@ const toInvoice = payload => {
 // 🚀 Service
 // ─────────────────────────────────────────────
 
+const INVOICE_SELECT = `
+  *,
+  customer (
+    id,
+    name,
+    mobile
+  )
+`;
+
+// Supabase returns at most 1000 rows per request, so fetch in batches
+const FETCH_BATCH_SIZE = 1000;
+
+const fetchAllRows = async buildQuery => {
+  const rows = [];
+  for (let from = 0; ; from += FETCH_BATCH_SIZE) {
+    const { data, error } = await buildQuery().range(
+      from,
+      from + FETCH_BATCH_SIZE - 1,
+    );
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < FETCH_BATCH_SIZE) return rows;
+  }
+};
+
+const formatDateOnly = d => {
+  const date = new Date(d);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+// Characters that break PostgREST `or()` filter syntax
+const sanitizeSearch = text => text.replace(/[,()%*\\]/g, ' ').trim();
+
 export const invoiceService = {
   // ✅ Get all invoices
 
   async getAll() {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() =>
+      supabase
+        .from('invoice')
+        .select(INVOICE_SELECT)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false }),
+    );
+
+    return data.map(mapInvoice);
+  },
+
+  // ✅ Get one page (server-side filters + search)
+
+  async getPaged({
+    page = 0,
+    pageSize = 20,
+    status = 'ALL',
+    type = 'ALL',
+    startDate = null,
+    endDate = null,
+    search = '',
+  } = {}) {
+    const searchText = sanitizeSearch(search || '');
+    const from = page * pageSize;
+
+    let query = supabase
       .from('invoice')
-      .select(`
+      .select(
+        `
         *,
-        customer (
+        customer${searchText ? '!inner' : ''} (
           id,
           name,
           mobile
         )
-      `)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false });
+      `,
+        { count: 'exact' },
+      )
+      .eq('is_deleted', false);
+
+    if (status !== 'ALL') query = query.eq('payment_status', status);
+    if (type !== 'ALL') query = query.eq('invoice_type', type);
+    if (startDate) query = query.gte('invoice_date', formatDateOnly(startDate));
+    if (endDate) query = query.lte('invoice_date', formatDateOnly(endDate));
+    if (searchText) {
+      query = query.or(
+        `name.ilike.%${searchText}%,mobile.ilike.%${searchText}%`,
+        { referencedTable: 'customer' },
+      );
+    }
+
+    const { data, error, count } = await query
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + pageSize - 1);
 
     if (error) throw error;
 
-    return data.map(mapInvoice);
+    return { rows: data.map(mapInvoice), total: count ?? 0 };
   },
 
   // ✅ Get by ID
@@ -156,8 +235,8 @@ export const invoiceService = {
 
   const invoice = mapInvoice(data);
 
-  await refreshNotificationSchedules();
   await notifySafely('notifyInvoiceCreated', invoice);
+  await refreshNotificationSchedules();
 
   return invoice;
 },
