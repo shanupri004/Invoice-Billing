@@ -24,6 +24,7 @@ export default {
     deleteInvoiceMessage: 'Are you sure you want to delete this invoice?',
     invoiceDeleted: 'Invoice deleted successfully',
     failedDeleteInvoice: 'Failed to delete invoice ',
+    pressBackAgainToExit: 'Press back again to exit',
   },
 
   network: {
@@ -64,6 +65,7 @@ export default {
     enterPin: 'Enter your 4-digit PIN to continue',
     somethingWrong: 'Something went wrong',
     wrongPin: 'Wrong PIN',
+    tooManyAttempts: 'Too many wrong attempts. Try again in {{minutes}} min.',
     onlineBillingSystem: 'ONLINE BILLING SYSTEM',
     designedBy: 'Designed & Developed by Shanmugapriya Iyappan',
     deleteKey: 'Delete',
@@ -185,9 +187,11 @@ export default {
     invoiceCreated: 'Invoice Created',
     labourInvoiceUpdated: 'Labour Invoice updated successfully ',
     labourInvoiceCreated: 'Labour Invoice Created ',
+    billNoRequired: 'Please enter a valid bill number',
   },
 
   invoiceList: {
+    records: 'records',
     billNoPrefix: 'Bill No :{{no}}',
     total: 'Total',
     unknownCustomer: 'Unknown Customer',

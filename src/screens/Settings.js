@@ -17,6 +17,7 @@ import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
 import { invoiceService } from '../services/invoiceService';
 import { notificationService } from '../services/notificationService';
+import { resetTo } from '../navigation/navigationHelpers';
 
 export default function SettingScreen({ navigation }) {
   const { t, language, setLanguage } = useTranslation();
@@ -71,7 +72,8 @@ export default function SettingScreen({ navigation }) {
   const handleLogout = async () => {
     setLogoutModal(false);
     await AsyncStorage.removeItem('auth');
-    navigation.replace('Login');
+    // Clear history so back from Login can't reopen the app without the PIN
+    resetTo(navigation, 'Login');
   };
 
   const languages = [

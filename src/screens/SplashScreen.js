@@ -21,14 +21,7 @@ export default function SplashScreen({ navigation }) {
       setTextIndex(prev => (prev + 1) % loadingTexts.length);
     }, 1000);
 
-    const timer = setTimeout(() => {
-      navigation.replace('Login');
-    }, 500000000000000000000000000000);
-
-    return () => {
-      clearInterval(textInterval);
-      clearTimeout(timer);
-    };
+    return () => clearInterval(textInterval);
   }, []);
 
   useEffect(() => {
@@ -51,7 +44,8 @@ export default function SplashScreen({ navigation }) {
 
       navigation.replace('Login');
     };
-    setTimeout(checkLogin, 5000);
+    const timer = setTimeout(checkLogin, 5000);
+    return () => clearTimeout(timer);
   }, []);
 
   return (

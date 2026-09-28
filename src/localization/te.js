@@ -24,6 +24,7 @@ export default {
     deleteInvoiceMessage: 'మీరు నిజంగా ఈ ఇన్‌వాయిస్‌ను తొలగించాలనుకుంటున్నారా?',
     invoiceDeleted: 'ఇన్‌వాయిస్ విజయవంతంగా తొలగించబడింది',
     failedDeleteInvoice: 'ఇన్‌వాయిస్ తొలగించడం విఫలమైంది',
+    pressBackAgainToExit: 'నిష్క్రమించడానికి మళ్లీ బ్యాక్ నొక్కండి',
   },
 
   network: {
@@ -60,6 +61,7 @@ export default {
     enterPin: 'కొనసాగించడానికి మీ 4 అంకెల PIN నమోదు చేయండి',
     somethingWrong: 'ఏదో తప్పు జరిగింది',
     wrongPin: 'తప్పు PIN',
+    tooManyAttempts: 'చాలా తప్పు ప్రయత్నాలు. {{minutes}} నిమిషాల్లో మళ్లీ ప్రయత్నించండి.',
     onlineBillingSystem: 'ఆన్‌లైన్ బిల్లింగ్ సిస్టమ్',
     designedBy: 'Shanmugapriya Iyappan ద్వారా డిజైన్ & డెవలప్ చేయబడింది',
     deleteKey: 'తొలగించండి',
@@ -178,8 +180,10 @@ export default {
     invoiceCreated: 'ఇన్‌వాయిస్ సృష్టించబడింది',
     labourInvoiceUpdated: 'లేబర్ ఇన్‌వాయిస్ విజయవంతంగా అప్‌డేట్ చేయబడింది',
     labourInvoiceCreated: 'లేబర్ ఇన్‌వాయిస్ సృష్టించబడింది',
+    billNoRequired: 'దయచేసి సరైన బిల్ నంబర్ నమోదు చేయండి',
   },
   invoiceList: {
+    records: 'రికార్డ్‌లు',
     billNoPrefix: 'బిల్ నంబర్ :{{no}}',
     total: 'మొత్తం',
     unknownCustomer: 'తెలియని కస్టమర్',

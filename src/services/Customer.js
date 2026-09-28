@@ -1,8 +1,6 @@
 // src/services/customerService.js
 import { supabase } from '../lib/supabase';
 
-console.log('SUPABASE CHECK:', supabase);
-
 // 🔹 DB → App Model
 const mapCustomer = row => ({
   id: row.id,
@@ -20,16 +18,57 @@ const toCustomer = payload => ({
   mobile: payload.mobile,
 });
 
+// Supabase returns at most 1000 rows per request, so fetch in batches
+const FETCH_BATCH_SIZE = 1000;
+
+// Characters that break PostgREST `or()` filter syntax
+const sanitizeSearch = text => text.replace(/[,()%*\\]/g, ' ').trim();
+
 export const customerService = {
   async getAll() {
-    const { data, error } = await supabase
+    const rows = [];
+    for (let from = 0; ; from += FETCH_BATCH_SIZE) {
+      const { data, error } = await supabase
+        .from('customer')
+        .select('*')
+        .eq('is_deleted', false) // ✅ filter
+        .order('name', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + FETCH_BATCH_SIZE - 1);
+
+      if (error) throw error;
+
+      rows.push(...data);
+      if (data.length < FETCH_BATCH_SIZE) break;
+    }
+
+    return rows.map(mapCustomer);
+  },
+
+  // ✅ Get one page (server-side search)
+  async getPaged({ page = 0, pageSize = 20, search = '' } = {}) {
+    const searchText = sanitizeSearch(search || '');
+    const from = page * pageSize;
+
+    let query = supabase
       .from('customer')
-      .select('*')
-      .eq('is_deleted', false); // ✅ filter
+      .select('*', { count: 'exact' })
+      .eq('is_deleted', false);
+
+    if (searchText) {
+      query = query.or(
+        `name.ilike.%${searchText}%,mobile.ilike.%${searchText}%,address.ilike.%${searchText}%`,
+      );
+    }
+
+    const { data, error, count } = await query
+      .order('name', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + pageSize - 1);
 
     if (error) throw error;
 
-    return data.map(mapCustomer);
+    return { rows: data.map(mapCustomer), total: count ?? 0 };
   },
 
   async getById(id) {

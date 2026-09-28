@@ -24,6 +24,7 @@ export default {
     deleteInvoiceMessage: 'क्या आप वाकई इस इनवॉइस को हटाना चाहते हैं?',
     invoiceDeleted: 'इनवॉइस सफलतापूर्वक हटा दिया गया',
     failedDeleteInvoice: 'इनवॉइस हटाने में विफल',
+    pressBackAgainToExit: 'बाहर निकलने के लिए फिर से बैक दबाएं',
   },
 
   network: {
@@ -64,6 +65,7 @@ export default {
     enterPin: 'जारी रखने के लिए अपना 4 अंकों का PIN दर्ज करें',
     somethingWrong: 'कुछ गलत हो गया',
     wrongPin: 'गलत PIN',
+    tooManyAttempts: 'बहुत अधिक गलत प्रयास। {{minutes}} मिनट बाद फिर से प्रयास करें।',
     onlineBillingSystem: 'ऑनलाइन बिलिंग सिस्टम',
     designedBy: 'Shanmugapriya Iyappan द्वारा डिज़ाइन और विकसित',
     deleteKey: 'हटाएं',
@@ -186,9 +188,11 @@ export default {
     invoiceCreated: 'इनवॉइस बनाया गया',
     labourInvoiceUpdated: 'श्रम इनवॉइस सफलतापूर्वक अपडेट किया गया',
     labourInvoiceCreated: 'श्रम इनवॉइस बनाया गया',
+    billNoRequired: 'कृपया सही बिल नंबर दर्ज करें',
   },
 
   invoiceList: {
+    records: 'रिकॉर्ड',
     billNoPrefix: 'बिल नंबर :{{no}}',
     total: 'कुल',
     unknownCustomer: 'अज्ञात ग्राहक',

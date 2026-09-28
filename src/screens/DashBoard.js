@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  BackHandler,
+  ToastAndroid,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../constants/Colors';
@@ -62,6 +65,30 @@ export default function DashboardScreen({ navigation }) {
     React.useCallback(() => {
       loadInvoices();
     }, [])
+  );
+
+  // Dashboard is the root screen: ask for a second back press before exiting
+  const lastBackPressRef = useRef(0);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (Platform.OS !== 'android') return undefined;
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (navigation.canGoBack()) return false;
+
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+
+        lastBackPressRef.current = now;
+        ToastAndroid.show(t('common.pressBackAgainToExit'), ToastAndroid.SHORT);
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, [navigation, t]),
   );
 
   const onRefresh = () => {

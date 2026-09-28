@@ -24,6 +24,7 @@ export default {
     deleteInvoiceMessage: 'ഈ ഇൻവോയ്സ് ഇല്ലാതാക്കണമെന്ന് ഉറപ്പാണോ?',
     invoiceDeleted: 'ഇൻവോയ്സ് വിജയകരമായി ഇല്ലാതാക്കി',
     failedDeleteInvoice: 'ഇൻവോയ്സ് ഇല്ലാതാക്കാൻ കഴിഞ്ഞില്ല',
+    pressBackAgainToExit: 'പുറത്തുകടക്കാൻ വീണ്ടും ബാക്ക് അമർത്തുക',
   },
   network: {
     offlineTitle: 'ഇന്റർനെറ്റ് കണക്ഷൻ ഇല്ല',
@@ -59,6 +60,7 @@ export default {
     enterPin: 'തുടരാൻ നിങ്ങളുടെ 4 അക്ക PIN നൽകുക',
     somethingWrong: 'എന്തോ തെറ്റ് സംഭവിച്ചു',
     wrongPin: 'തെറ്റായ PIN',
+    tooManyAttempts: 'നിരവധി തെറ്റായ ശ്രമങ്ങൾ. {{minutes}} മിനിറ്റിനു ശേഷം വീണ്ടും ശ്രമിക്കുക.',
     onlineBillingSystem: 'ഓൺലൈൻ ബില്ലിംഗ് സിസ്റ്റം',
     designedBy: 'Shanmugapriya Iyappan രൂപകൽപ്പന ചെയ്ത് വികസിപ്പിച്ചത്',
     deleteKey: 'ഇല്ലാതാക്കുക',
@@ -176,8 +178,10 @@ export default {
     invoiceCreated: 'ഇൻവോയ്സ് സൃഷ്ടിച്ചു',
     labourInvoiceUpdated: 'തൊഴിൽ ഇൻവോയ്സ് വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു',
     labourInvoiceCreated: 'തൊഴിൽ ഇൻവോയ്സ് സൃഷ്ടിച്ചു',
+    billNoRequired: 'ശരിയായ ബിൽ നമ്പർ നൽകുക',
   },
   invoiceList: {
+    records: 'റെക്കോർഡുകൾ',
     billNoPrefix: 'ബിൽ നമ്പർ :{{no}}',
     total: 'ആകെ',
     unknownCustomer: 'അജ്ഞാത ഉപഭോക്താവ്',

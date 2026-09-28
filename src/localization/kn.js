@@ -24,6 +24,7 @@ export default {
     deleteInvoiceMessage: 'ಈ ಇನ್‌ವಾಯ್ಸ್ ಅನ್ನು ಅಳಿಸಲು ನೀವು ಖಚಿತವಾಗಿ ಬಯಸುವಿರಾ?',
     invoiceDeleted: 'ಇನ್‌ವಾಯ್ಸ್ ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ',
     failedDeleteInvoice: 'ಇನ್‌ವಾಯ್ಸ್ ಅಳಿಸಲು ವಿಫಲವಾಗಿದೆ',
+    pressBackAgainToExit: 'ನಿರ್ಗಮಿಸಲು ಮತ್ತೆ ಬ್ಯಾಕ್ ಒತ್ತಿರಿ',
   },
 
   network: {
@@ -60,6 +61,7 @@ export default {
     enterPin: 'ಮುಂದುವರಿಸಲು ನಿಮ್ಮ 4 ಅಂಕಿಯ PIN ನಮೂದಿಸಿ',
     somethingWrong: 'ಏನೋ ತಪ್ಪಾಗಿದೆ',
     wrongPin: 'ತಪ್ಪಾದ PIN',
+    tooManyAttempts: 'ಹಲವು ತಪ್ಪು ಪ್ರಯತ್ನಗಳು. {{minutes}} ನಿಮಿಷಗಳ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     onlineBillingSystem: 'ಆನ್‌ಲೈನ್ ಬಿಲ್ಲಿಂಗ್ ಸಿಸ್ಟಮ್',
     designedBy: 'Shanmugapriya Iyappan ವಿನ್ಯಾಸಗೊಳಿಸಿ ಅಭಿವೃದ್ಧಿಪಡಿಸಿದ್ದಾರೆ',
     deleteKey: 'ಅಳಿಸಿ',
@@ -177,8 +179,10 @@ export default {
     invoiceCreated: 'ಇನ್‌ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ',
     labourInvoiceUpdated: 'ಕಾರ್ಮಿಕ ಇನ್‌ವಾಯ್ಸ್ ಯಶಸ್ವಿಯಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ',
     labourInvoiceCreated: 'ಕಾರ್ಮಿಕ ಇನ್‌ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ',
+    billNoRequired: 'ದಯವಿಟ್ಟು ಸರಿಯಾದ ಬಿಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ',
   },
   invoiceList: {
+    records: 'ದಾಖಲೆಗಳು',
     billNoPrefix: 'ಬಿಲ್ ಸಂಖ್ಯೆ :{{no}}',
     total: 'ಒಟ್ಟು',
     unknownCustomer: 'ಅಜ್ಞಾತ ಗ್ರಾಹಕ',

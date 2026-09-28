@@ -24,6 +24,7 @@ export default {
     deleteInvoiceMessage: 'இந்த விலைப்பட்டியலை நீக்க விரும்புகிறீர்களா?',
     invoiceDeleted: 'விலைப்பட்டியல் வெற்றிகரமாக நீக்கப்பட்டது',
     failedDeleteInvoice: 'விலைப்பட்டியலை நீக்க முடியவில்லை ',
+    pressBackAgainToExit: 'வெளியேற மீண்டும் பின் பொத்தானை அழுத்தவும்',
   },
   network: {
     offlineTitle: 'இணைய இணைப்பு இல்லை',
@@ -62,6 +63,7 @@ export default {
     enterPin: 'தொடர 4 இலக்க பின் எண்ணை உள்ளிடவும்',
     somethingWrong: 'ஏதோ தவறு நடந்தது',
     wrongPin: 'தவறான பின்',
+    tooManyAttempts: 'அதிக தவறான முயற்சிகள். {{minutes}} நிமிடங்களில் மீண்டும் முயற்சிக்கவும்.',
     onlineBillingSystem: 'ஆன்லைன் பில்லிங் சிஸ்டம்',
     designedBy: 'வடிவமைத்து உருவாக்கியவர் சண்முகப்பிரியா ஐயப்பன்',
     deleteKey: 'நீக்கு',
@@ -186,9 +188,11 @@ export default {
     labourInvoiceUpdated:
       'கூலி விலைப்பட்டியல் வெற்றிகரமாக புதுப்பிக்கப்பட்டது ',
     labourInvoiceCreated: 'கூலி விலைப்பட்டியல் உருவாக்கப்பட்டது ',
+    billNoRequired: 'சரியான பில் எண்ணை உள்ளிடவும்',
   },
 
   invoiceList: {
+    records: 'பதிவுகள்',
     billNoPrefix: 'பில் எண் :{{no}}',
     total: 'மொத்தம்',
     unknownCustomer: 'தெரியாத வாடிக்கையாளர்',

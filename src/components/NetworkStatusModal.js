@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  AppState,
   Image,
   Modal,
   StyleSheet,
@@ -10,8 +11,14 @@ import NetInfo from '@react-native-community/netinfo';
 import { RefreshCw } from 'lucide-react-native';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from './AppText';
+import { onNetworkFailure } from '../lib/networkEvents';
 
 const SHOW_POPUP_FOR_TESTING = false;
+
+// Connected to Wi-Fi/data isn't enough: the network may have no internet.
+// `isInternetReachable` is null while still being checked, so only trust `false`.
+const isOffline = state =>
+  state.isConnected === false || state.isInternetReachable === false;
 
 export default function NetworkStatusModal() {
   const { t } = useTranslation();
@@ -20,28 +27,40 @@ export default function NetworkStatusModal() {
   const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      if (state.isConnected === false) {
+    const unsubscribeNetInfo = NetInfo.addEventListener(state => {
+      if (isOffline(state)) {
         setVisible(true);
       } else if (state.isConnected === true) {
         setVisible(false);
       }
     });
 
-    return unsubscribe;
+    // A request failed mid-way: confirm we're really offline before showing
+    const unsubscribeFailures = onNetworkFailure(async () => {
+      const state = await NetInfo.refresh();
+      if (isOffline(state)) setVisible(true);
+    });
+
+    // Connection may have dropped while the app was in the background
+    const appStateSubscription = AppState.addEventListener('change', async next => {
+      if (next !== 'active') return;
+      const state = await NetInfo.refresh();
+      setVisible(isOffline(state));
+    });
+
+    return () => {
+      unsubscribeNetInfo();
+      unsubscribeFailures();
+      appStateSubscription.remove();
+    };
   }, []);
 
   const handleRetry = async () => {
     setIsRetrying(true);
 
     try {
-      const state = await NetInfo.fetch();
-
-      if (state.isConnected) {
-        setVisible(false);
-      } else {
-        setVisible(true);
-      }
+      const state = await NetInfo.refresh();
+      setVisible(isOffline(state));
     } finally {
       setIsRetrying(false);
     }
