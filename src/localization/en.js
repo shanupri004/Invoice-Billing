@@ -250,6 +250,9 @@ export default {
     pdfNotReadyShort: 'PDF is not ready.',
     failedToGeneratePdf: 'Failed to generate PDF.',
     failedToGeneratePdfRetry: 'Failed to generate PDF. Please try again.',
+    businessDetailsUnavailableTitle: 'Business details unavailable',
+    businessDetailsUnavailableMessage:
+      "Couldn't load your business details. The bill will use default details until you're back online.",
     savedTitle: 'Saved!',
     savedMessage: 'Invoice saved to Downloads folder.',
     failedToSavePdf: 'Failed to save PDF.',

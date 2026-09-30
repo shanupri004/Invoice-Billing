@@ -240,6 +240,9 @@ export default {
     failedToGeneratePdf: 'PDF రూపొందించడం విఫలమైంది.',
     failedToGeneratePdfRetry:
       'PDF రూపొందించడం విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    businessDetailsUnavailableTitle: 'వ్యాపార వివరాలు అందుబాటులో లేవు',
+    businessDetailsUnavailableMessage:
+      "మీ వ్యాపార వివరాలను లోడ్ చేయలేకపోయాము. ఆన్‌లైన్ అయ్యే వరకు బిల్లులో డిఫాల్ట్ వివరాలు ఉంటాయి.",
     savedTitle: 'సేవ్ చేయబడింది!',
     savedMessage: 'ఇన్‌వాయిస్ Downloads ఫోల్డర్‌లో సేవ్ చేయబడింది.',
     failedToSavePdf: 'PDF సేవ్ చేయడం విఫలమైంది.',

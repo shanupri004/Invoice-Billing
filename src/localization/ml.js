@@ -238,6 +238,9 @@ export default {
     failedToGeneratePdf: 'PDF സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല.',
     failedToGeneratePdfRetry:
       'PDF സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
+    businessDetailsUnavailableTitle: 'ബിസിനസ് വിവരങ്ങൾ ലഭ്യമല്ല',
+    businessDetailsUnavailableMessage:
+      "നിങ്ങളുടെ ബിസിനസ് വിവരങ്ങൾ ലോഡ് ചെയ്യാനായില്ല. ഓൺലൈനാകുന്നത് വരെ ബില്ലിൽ ഡിഫോൾട്ട് വിവരങ്ങൾ ഉണ്ടാകും.",
     savedTitle: 'സേവ് ചെയ്തു!',
     savedMessage: 'ഇൻവോയ്സ് Downloads ഫോൾഡറിൽ സേവ് ചെയ്തു.',
     failedToSavePdf: 'PDF സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.',

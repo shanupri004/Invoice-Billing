@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -14,7 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { generatePDF } from 'react-native-html-to-pdf';
-import { buildInvoiceHtml } from '../utils/invoiceHtml';
+import { buildInvoiceHtml, getBusinessDisplay } from '../utils/invoiceHtml';
 import {
   ChevronLeft,
   Share2,
@@ -38,6 +38,7 @@ import RNPrint from 'react-native-print';
 import { COLORS } from '../constants/Colors';
 import { numberToIndianWords } from '../utils/numberToIndianWords';
 import { invoiceService } from '../services/invoiceService';
+import { masterService } from '../services/masterService';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
 import { goBackOrHome } from '../navigation/navigationHelpers';
@@ -125,7 +126,6 @@ export default function Step4({ route, navigation }) {
   const [invoiceData, setInvoiceData] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfPreviewVisible, setPdfPreviewVisible] = useState(false);
-  const [pdfBase64, setPdfBase64] = useState(null);
   const [pdfFilePath, setPdfFilePath] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -133,10 +133,77 @@ export default function Step4({ route, navigation }) {
   const [updatingPayment, setUpdatingPayment] = useState(false);
   const [sign, setSign] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Business details from the `master` table (+ logo/signature as data URLs)
+  const [master, setMaster] = useState({
+    settings: {},
+    logo: null,
+    signImage: null,
+  });
+  const masterPromiseRef = useRef(null);
   // Re-runs when an edit form returns here with fresh params
   useEffect(() => {
     loadInvoice();
   }, [route?.params?.invoiceId, route?.params?.refreshAt]);
+
+  useEffect(() => {
+    loadMaster().then(result => {
+      if (!result.loaded) {
+        Alert.alert(
+          t('invoicePreview.businessDetailsUnavailableTitle'),
+          t('invoicePreview.businessDetailsUnavailableMessage'),
+        );
+      }
+    });
+
+    // Admin panel edits show up without reopening the screen
+    const unsubscribe = masterService.subscribe(settings => {
+      masterPromiseRef.current = applyMaster(settings);
+    });
+    return unsubscribe;
+  }, []);
+
+  const applyMaster = async settings => {
+    const [logo, signImage] = await Promise.all([
+      masterService.getImageDataUrl(settings.logoPath),
+      masterService.getImageDataUrl(settings.signaturePath),
+    ]);
+    const result = { settings, logo, signImage, loaded: true };
+    setMaster(result);
+    return result;
+  };
+
+  // Never rejects: on failure the bill falls back to 'My Business' with no images
+  const loadMaster = () => {
+    masterPromiseRef.current = masterService
+      .getMaster()
+      .then(applyMaster)
+      .catch(error => {
+        console.error('Master fetch error:', error);
+        return { settings: {}, logo: null, signImage: null, loaded: false };
+      });
+    return masterPromiseRef.current;
+  };
+
+  // Waits for an in-flight master load so the PDF never uses stale defaults,
+  // and retries once if the earlier load failed (e.g. came back online)
+  const getMasterForPdf = async () => {
+    const result = await (masterPromiseRef.current || loadMaster());
+    return result.loaded ? result : loadMaster();
+  };
+
+  const buildHtml = async () => {
+    const { settings, logo, signImage } = await getMasterForPdf();
+    return buildInvoiceHtml({
+      invoiceData,
+      items,
+      sign,
+      amountInWords,
+      grandTotal,
+      settings,
+      logo,
+      signImage,
+    });
+  };
 
   const loadInvoice = async () => {
     try {
@@ -202,13 +269,7 @@ export default function Step4({ route, navigation }) {
     if (!invoiceData) return;
     setPdfLoading(true);
     try {
-      const html = buildInvoiceHtml({
-        invoiceData,
-        items,
-        sign,
-        amountInWords,
-        grandTotal,
-      });
+      const html = await buildHtml();
 
       const options = {
         html,
@@ -259,38 +320,18 @@ export default function Step4({ route, navigation }) {
     }
   };
 
-  // ─── Fetch & Preview PDF ─────────────────────────────────
+  // ─── Print ───────────────────────────────────────────────
+  // Prints the same locally generated HTML as the PDF preview
   const handlePrint = async () => {
     if (!invoiceData) return;
 
-    const payload = { ...invoiceData, sign, amountInWords };
-
     setPdfLoading(true);
     try {
-      const response = await fetch(
-        'https://pdf-generator-backend-s90a.onrender.com/pdf/AES/product-invoice',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        },
-      );
-
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-      const arrayBuffer = await response.arrayBuffer();
-      const base64Data = arrayBufferToBase64(arrayBuffer);
-
-      // Save to cache for preview
-      const filePath = `${RNFS.CachesDirectoryPath}/invoice_preview.pdf`;
-      await RNFS.writeFile(filePath, base64Data, 'base64');
-
-      setPdfBase64(base64Data);
-      setPdfFilePath(filePath);
-      setPdfPreviewVisible(true);
+      const html = await buildHtml();
+      await RNPrint.print({ html });
     } catch (error) {
-      console.error('PDF generation failed:', error);
-      Alert.alert(t('common.error'), t('invoicePreview.failedToGeneratePdfRetry'));
+      console.error('Print failed:', error);
+      Alert.alert(t('invoicePreview.printFailedTitle'), t('invoicePreview.printFailedMessage'));
     } finally {
       setPdfLoading(false);
     }
@@ -332,16 +373,6 @@ export default function Step4({ route, navigation }) {
       setDownloading(false);
     }
   };
-
-  // Helper: ArrayBuffer → Base64 string
-  function arrayBufferToBase64(buffer) {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
 
   // const paymentModes = ['Cash', 'UPI', 'Card', 'Net Banking'];
 
@@ -445,6 +476,8 @@ export default function Step4({ route, navigation }) {
     paise ? `and ${numberToIndianWords(paise)} paise` : ''
   } only`;
 
+  const business = getBusinessDisplay(master.settings);
+
   const invoiceDate = invoiceData?.invoiceDate
     ? new Date(invoiceData.invoiceDate).toLocaleDateString('en-GB', {
         day: '2-digit',
@@ -524,10 +557,12 @@ export default function Step4({ route, navigation }) {
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.card}>
               <View style={styles.companyHeader}>
-                <Text style={styles.companyName}>Aadhi Engine Care</Text>
-                <Text style={styles.companyTag}>
-                  KIRLOSKAR Spares for R/HA/R1040/SL90 Engines
-                </Text>
+                <Text style={styles.companyName}>{business.name}</Text>
+                {!!business.engineName && (
+                  <Text style={styles.companyTag}>
+                    {business.engineName} Engines
+                  </Text>
+                )}
               </View>
 
               <View style={styles.infoBlockRight}>
@@ -550,21 +585,24 @@ export default function Step4({ route, navigation }) {
               </View>
               <View style={styles.infoGrid}>
                 <View style={styles.infoBlock}>
-                  <View style={styles.inlineRow}>
-                    <MapPin size={14} color={COLORS.primary} />
-                    <Text style={styles.infoText}>No. 5, Vetri Nagar</Text>
-                  </View>
-                  <Text style={styles.infoText}>
-                    Vickramasingapuram - 627425
-                  </Text>
-                  
+                  {!!business.address && (
+                    <View style={styles.inlineRow}>
+                      <MapPin size={14} color={COLORS.primary} />
+                      <Text style={styles.infoText}>{business.address}</Text>
+                    </View>
+                  )}
+                  {!!business.cityLine && (
+                    <Text style={styles.infoText}>{business.cityLine}</Text>
+                  )}
 
-                  <View style={styles.inlineRow}>
-                    <PhoneCall size={14} color={COLORS.primary} />
-                    <Text style={[styles.infoText, styles.callText]}>
-                      9865254161{' '}
-                    </Text>
-                  </View>
+                  {!!business.mobile && (
+                    <View style={styles.inlineRow}>
+                      <PhoneCall size={14} color={COLORS.primary} />
+                      <Text style={[styles.infoText, styles.callText]}>
+                        {business.mobile}{' '}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </View>
@@ -853,11 +891,16 @@ export default function Step4({ route, navigation }) {
                 </View>
               </SafeAreaView>
             </Modal>
-            <Text style={styles.footerText}>
-              Only genuine <Text style={styles.footerStrong}>KIRLOSKAR</Text>{' '}
-              Spares and <Text style={styles.footerStrong}>K-OIL</Text> for your
-              Kirloskar engine's lifelong care.
-            </Text>
+            {!!business.brand && (
+              <Text style={styles.footerText}>
+                Only genuine{' '}
+                <Text style={styles.footerStrong}>
+                  {business.brand.toUpperCase()}
+                </Text>{' '}
+                Spares and <Text style={styles.footerStrong}>K-OIL</Text> for
+                your {business.brandTitle} engine's lifelong care.
+              </Text>
+            )}
           </ScrollView>
         </View>
       </KeyboardAvoidingView>

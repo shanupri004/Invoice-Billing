@@ -250,6 +250,9 @@ export default {
     failedToGeneratePdf: 'PDF तैयार करने में विफल।',
     failedToGeneratePdfRetry:
       'PDF तैयार करने में विफल। कृपया पुनः प्रयास करें।',
+    businessDetailsUnavailableTitle: 'व्यवसाय विवरण उपलब्ध नहीं',
+    businessDetailsUnavailableMessage:
+      "आपके व्यवसाय का विवरण लोड नहीं हो सका। ऑनलाइन होने तक बिल में डिफ़ॉल्ट विवरण दिखेंगे।",
     savedTitle: 'सहेजा गया!',
     savedMessage: 'इनवॉइस Downloads फ़ोल्डर में सहेजा गया।',
     failedToSavePdf: 'PDF सहेजने में विफल।',

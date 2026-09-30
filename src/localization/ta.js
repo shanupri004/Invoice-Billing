@@ -251,6 +251,9 @@ export default {
     failedToGeneratePdf: 'PDF உருவாக்க முடியவில்லை.',
     failedToGeneratePdfRetry:
       'PDF உருவாக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+    businessDetailsUnavailableTitle: 'வணிக விவரங்கள் கிடைக்கவில்லை',
+    businessDetailsUnavailableMessage:
+      "உங்கள் வணிக விவரங்களை ஏற்ற முடியவில்லை. இணையம் திரும்பும் வரை பில்லில் இயல்புநிலை விவரங்கள் இருக்கும்.",
     savedTitle: 'சேமிக்கப்பட்டது!',
     savedMessage: 'விலைப்பட்டியல் பதிவிறக்கங்கள் கோப்புறையில் சேமிக்கப்பட்டது.',
     failedToSavePdf: 'PDF ஐ சேமிக்க முடியவில்லை.',

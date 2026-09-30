@@ -1,6 +1,55 @@
 // invoiceHtml.js
-import { Logo, Sign } from '../assets/invoiceImages';
-import { COLORS } from '../constants/Colors';
+// Keep in sync with the admin panel's src/lib/invoice-pdf.ts so both apps
+// produce the same bill for the same invoice.
+
+const escapeHtml = value =>
+  String(value ?? '').replace(
+    /[&<>"']/g,
+    ch =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[
+        ch
+      ]),
+  );
+
+// "2026-09-30" -> "30/09/2026" without going through Date (no timezone shift)
+const formatDate = value => {
+  const [y, m, d] = String(value ?? '').slice(0, 10).split('-');
+  return y && m && d ? `${d}/${m}/${y}` : '';
+};
+
+const formatAmount = n =>
+  Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+// Business details from the `master` row, shared by the PDF and the
+// on-screen bill card.
+export const getBusinessDisplay = (settings = {}) => {
+  const name = settings.name || 'My Business';
+  // Initials, max 4 chars: "Aadhi Engine Care" -> "AEC"
+  const mark =
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(w => w[0]?.toUpperCase())
+      .join('')
+      .slice(0, 4) || 'INV';
+  const cityLine = [settings.city, settings.pincode].filter(Boolean).join(' - ');
+  // "KIRLOSKAR SPARES FOR ..." -> "KIRLOSKAR"
+  const brand = (settings.engineName || '').trim().split(/\s+/)[0] ?? '';
+
+  return {
+    name,
+    mark,
+    engineName: settings.engineName || '',
+    address: settings.address || '',
+    cityLine,
+    mobile: settings.mobile || '',
+    brand,
+    // "KIRLOSKAR" -> "Kirloskar"
+    brandTitle: brand
+      ? brand[0].toUpperCase() + brand.slice(1).toLowerCase()
+      : '',
+  };
+};
 
 export const buildInvoiceHtml = ({
   invoiceData,
@@ -8,9 +57,17 @@ export const buildInvoiceHtml = ({
   sign,
   amountInWords,
   grandTotal,
+  settings,
+  logo,
+  signImage,
 }) => {
   const data = invoiceData;
   const isLabour = data.invoiceType === 'LABOUR';
+  const business = getBusinessDisplay(settings);
+  const name = escapeHtml(business.name);
+  const mark = escapeHtml(business.mark);
+
+  console.log('buildInvoiceHtml', { data, items, sign, amountInWords, grandTotal, settings, logo, signImage });
 
   return `
 <!doctype html>
@@ -27,7 +84,7 @@ export const buildInvoiceHtml = ({
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: "Times New Roman", serif; padding: 30px; font-size: 14px; }
       table { width: 100%; border-collapse: collapse; }
-      td, th { border: 1px solid #133c98; }
+      td, th { border: 1px solid #000; }
       .page { position: relative; }
       .watermark {
         position: absolute; width: 50%; height: 50%; left: 20%; top: 30%;
@@ -62,7 +119,7 @@ export const buildInvoiceHtml = ({
   <body>
     <div class="page">
       <div class="watermark">
-        <span class="watermark-mark">AEC</span>
+        <span class="watermark-mark">${mark}</span>
       </div>
 
       <div class="content">
@@ -71,15 +128,23 @@ export const buildInvoiceHtml = ({
             <tr>
               <td>
                 <div class="top-header">
-                  <h1 class="company-name">Aadhi Engine Care</h1>
-                  <div class="company-mark">AEC</div>
+                  <h1 class="company-name">${name}</h1>
+                  <div class="company-mark">${mark}</div>
                 </div>
                 <div class="company-details">
                   <p>
-                    <b>KIRLOSKAR SPARES FOR R/HA/R1040/SL90</b> Engines <br/>
-                    No. 5, Vetri Nagar <br/>
-                    Vickramasingapuram - 627425 <br/>
-                    <b>Cell: 9865254161</b>
+                    ${
+                      business.engineName
+                        ? `<b>${escapeHtml(business.engineName)}</b> Engines <br/>`
+                        : ''
+                    }
+                    ${
+                      business.address
+                        ? `${escapeHtml(business.address).replace(/\r?\n/g, '<br/>')} <br/>`
+                        : ''
+                    }
+                    ${business.cityLine ? `${escapeHtml(business.cityLine)} <br/>` : ''}
+                    ${business.mobile ? `<b>Cell: ${escapeHtml(business.mobile)}</b>` : ''}
                   </p>
                 </div>
               </td>
@@ -95,13 +160,13 @@ export const buildInvoiceHtml = ({
               <th class="bill-label">Date</th>
             </tr>
             <tr>
-              <td class="bill-value">${data.billNo}</td>
-              <td class="bill-value">${new Date(data.invoiceDate).toLocaleDateString('en-IN')}</td>
+              <td class="bill-value">${escapeHtml(data.billNo)}</td>
+              <td class="bill-value">${formatDate(data.invoiceDate)}</td>
             </tr>
           </table>
 
          <div class="logo">
-            <img src="${Logo}" alt="AEC Logo" />
+            ${logo ? `<img src="${logo}" alt="Logo" />` : ''}
           </div>
         </div>
 
@@ -111,9 +176,9 @@ export const buildInvoiceHtml = ({
               <td style="padding:5px">
                 <h2>To</h2>
                 <div style="padding-left:30px">
-                  <h3>${data.customer.name} <br/> <b>${
-    data.customer.mobile
-  }</b></h3>
+                  <h3>${escapeHtml(data.customer?.name)} <br/> <b>${escapeHtml(
+    data.customer?.mobile,
+  )}</b></h3>
                 </div>
               </td>
             </tr>
@@ -122,13 +187,15 @@ export const buildInvoiceHtml = ({
           <table style="width:70%;border-collapse:collapse;font-size:14px;text-align:center;font-family:'Times New Roman',serif;">
             <tr>
               <td style="border:1px solid #fff;padding:2px;background:#133c98;color:#fff;font-weight:bold;">Billed From</td>
-              <td style="border:1px solid #000;padding:2px">Aadhi Engine Care</td>
+              <td style="border:1px solid #000;padding:2px">${name}</td>
             </tr>
             ${
               data.paymentStatus !== 'PENDING'
                 ? `<tr>
                     <td style="border:1px solid #fff;padding:2px;background:#133c98;color:#fff;font-weight:bold;">Payment Terms</td>
-                    <td style="border:1px solid #000;padding:2px">Cash</td>
+                    <td style="border:1px solid #000;padding:2px">${escapeHtml(
+                      data.paymentMode ?? 'Cash',
+                    )}</td>
                   </tr>`
                 : `<tr>
                     <td style="border:1px solid #fff;padding:2px;background:#133c98;color:#fff;font-weight:bold;">Payment</td>
@@ -151,7 +218,7 @@ export const buildInvoiceHtml = ({
           </tr>
           ${items
             .map((item, index) => {
-              const desc = item.description ?? item.name ?? '';
+              const desc = escapeHtml(item.description ?? item.name ?? '');
               const amount = isLabour
                 ? Number(item.amount || 0)
                 : Number(item.unitPrice || 0) * Number(item.qty || 0);
@@ -164,13 +231,13 @@ export const buildInvoiceHtml = ({
                   isLabour
                     ? ''
                     : `<th style="padding:10px;border-left:2px solid #000;border-right:2px solid #000;border-bottom:none;border-top:none;">${
-                        item.qty || ''
+                        escapeHtml(item.qty || '')
                       }</th><th style="padding:10px;border-left:2px solid #000;border-right:2px solid #000;border-bottom:none;border-top:none;">₹ ${
-                        item.unitPrice || ''
+                        item.unitPrice ? formatAmount(item.unitPrice) : ''
                       }</th>`
                 }
                 <th style="padding:10px;border-left:2px solid #000;border-right:2px solid #000;border-bottom:none;border-top:none;">₹ ${
-                  amount || ''
+                  amount ? formatAmount(amount) : ''
                 }</th>
               </tr>`;
             })
@@ -192,32 +259,38 @@ export const buildInvoiceHtml = ({
         </table>
 
         <div style="margin-top:10px;display:flex;gap:10px;width:100%">
-          <table style="width:60%;">
+          <table style="width:60%;  border:1px solid #000">
             <tr>
               <td style="padding:20px">
-                <h2>Amount in Words : ₹ ${grandTotal}</h2>
+                <h2>Amount in Words : ₹ ${formatAmount(grandTotal)}</h2>
                 <div style="padding:5px">
-                  <h3 style="line-height:1.7">${amountInWords} /-</h3>
+                  <h3 style="line-height:1.7">${escapeHtml(amountInWords)} /-</h3>
                 </div>
               </td>
             </tr>
           </table>
 
           <table style="width:70%;border-collapse:collapse;font-size:14px;text-align:center;font-family:'Times New Roman',serif;border:1px solid #000;">
-            <tr><td style="border:none;padding:8px;font-size:15px"><b>Aadhi Engine Care</b></td></tr>
+            <tr><td style="border:none;padding:8px;font-size:15px"><b>${name}</b></td></tr>
             <tr>
               ${
-                sign
-                  ? `<td style="border:none;padding:8px 12px"><img src="${Sign}" width="60%" height="40%" /></td>`
+                sign && signImage
+                  ? `<td style="border:none;padding:8px 12px"><img src="${signImage}" style="max-width:60%;max-height:80px;object-fit:contain" /></td>`
                   : `<td style="border:none;padding:8px 12px"></td>`
               }
             </tr>
           </table>
         </div>
 
-        <div class="footer">
-          Only genuine <b>KIRLOSKAR</b> Spares and K-OIL for your Kirloskar Engine's Life Long Care.
-        </div>
+        ${
+          business.brand
+            ? `<div class="footer">
+          Only genuine <b>${escapeHtml(business.brand.toUpperCase())}</b> Spares and K-OIL for your ${escapeHtml(
+                business.brandTitle,
+              )} Engine's Life Long Care.
+        </div>`
+            : ''
+        }
       </div>
     </div>
   </body>

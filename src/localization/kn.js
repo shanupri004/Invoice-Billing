@@ -239,6 +239,9 @@ export default {
     failedToGeneratePdf: 'PDF ರಚಿಸಲು ವಿಫಲವಾಗಿದೆ.',
     failedToGeneratePdfRetry:
       'PDF ರಚಿಸಲು ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    businessDetailsUnavailableTitle: 'ವ್ಯವಹಾರದ ವಿವರಗಳು ಲಭ್ಯವಿಲ್ಲ',
+    businessDetailsUnavailableMessage:
+      "ನಿಮ್ಮ ವ್ಯವಹಾರದ ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ಆನ್‌ಲೈನ್ ಆಗುವವರೆಗೆ ಬಿಲ್‌ನಲ್ಲಿ ಡೀಫಾಲ್ಟ್ ವಿವರಗಳು ಇರುತ್ತವೆ.",
     savedTitle: 'ಉಳಿಸಲಾಗಿದೆ!',
     savedMessage: 'ಇನ್‌ವಾಯ್ಸ್ ಅನ್ನು Downloads ಫೋಲ್ಡರ್‌ನಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ.',
     failedToSavePdf: 'PDF ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ.',
