@@ -51,7 +51,6 @@ export default function CustomerListScreen({ navigation }) {
   const fetchCustomers = async () => {
     try {
       const data = await customerService.getAll();
-      console.log('Fetched customers:', data);
       setCustomers(data);
     } catch (err) {
       console.error(err);
