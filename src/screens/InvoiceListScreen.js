@@ -76,11 +76,9 @@ const InvoiceListScreen = ({ navigation }) => {
   const loadInvoices = async () => {
     try {
       const data = await invoiceService.getAll();
-      console.log('Loaded Invoices:', data);
       setInvoices(data);
       setFilteredInvoices(data);
     } catch (error) {
-      console.log('Invoice Load Error:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

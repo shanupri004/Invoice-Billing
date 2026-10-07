@@ -12,6 +12,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Image,
 } from 'react-native';
 import { generatePDF } from 'react-native-html-to-pdf';
 import { buildInvoiceHtml } from '../utils/invoiceHtml';
@@ -38,6 +39,7 @@ import RNPrint from 'react-native-print';
 import { COLORS } from '../constants/Colors';
 import { numberToIndianWords } from '../utils/numberToIndianWords';
 import { invoiceService } from '../services/invoiceService';
+import { masterService } from '../services/masterService';
 import { useTranslation } from '../localization/LanguageContext';
 import Text from '../components/AppText';
 
@@ -122,6 +124,7 @@ export default function Step4({ route, navigation }) {
   };
   // ALL useState hooks must be at the TOP, before any useEffect
   const [invoiceData, setInvoiceData] = useState(null);
+  const [master, setMaster] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfPreviewVisible, setPdfPreviewVisible] = useState(false);
   const [pdfBase64, setPdfBase64] = useState(null);
@@ -134,14 +137,23 @@ export default function Step4({ route, navigation }) {
   const [downloading, setDownloading] = useState(false);
   useEffect(() => {
     loadInvoice();
+    loadMaster();
   }, []);
+
+  const loadMaster = async () => {
+    try {
+      const data = await masterService.get();
+      setMaster(data);
+    } catch (error) {
+      console.error('Master fetch error:', error);
+    }
+  };
 
   const loadInvoice = async () => {
     try {
       setLoading(true);
       const invoiceID = route?.params?.invoiceId;
       const data = await invoiceService.getById(invoiceID);
-      console.log('Fetched invoice data:', data);
       setInvoiceData(data);
     } catch (error) {
       console.error('Invoice fetch error:', error);
@@ -209,6 +221,7 @@ export default function Step4({ route, navigation }) {
         sign,
         amountInWords,
         grandTotal,
+        master,
       });
 
       const options = {
@@ -260,91 +273,10 @@ export default function Step4({ route, navigation }) {
     }
   };
 
-  // ─── Fetch & Preview PDF ─────────────────────────────────
-  const handlePrint = async () => {
-    if (!invoiceData) return;
 
-    const payload = { ...invoiceData, sign, amountInWords };
 
-    setPdfLoading(true);
-    console.log('the payload', payload);
-    try {
-      console.log('trying to reach print');
-      const response = await fetch(
-        'https://pdf-generator-backend-s90a.onrender.com/pdf/AES/product-invoice',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        },
-      );
 
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-      const arrayBuffer = await response.arrayBuffer();
-      const base64Data = arrayBufferToBase64(arrayBuffer);
-
-      // Save to cache for preview
-      const filePath = `${RNFS.CachesDirectoryPath}/invoice_preview.pdf`;
-      await RNFS.writeFile(filePath, base64Data, 'base64');
-
-      setPdfBase64(base64Data);
-      setPdfFilePath(filePath);
-      setPdfPreviewVisible(true);
-    } catch (error) {
-      console.error('PDF generation failed:', error);
-      Alert.alert(t('common.error'), t('invoicePreview.failedToGeneratePdfRetry'));
-    } finally {
-      setPdfLoading(false);
-    }
-  };
-
-  // ─── Save / Download PDF ─────────────────────────────────
-  const handleSavePdf = async () => {
-    if (!pdfFilePath) {
-      Alert.alert(t('common.error'), t('invoicePreview.pdfNotReady'));
-      return;
-    }
-
-    setDownloading(true);
-    try {
-      const fileName = `${buildPdfFileName() || `invoice_${Date.now()}`}.pdf`;
-
-      if (Platform.OS === 'android') {
-        // Save to Downloads folder on Android
-        const destPath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-        await RNFS.copyFile(pdfFilePath, destPath);
-        Alert.alert(t('invoicePreview.savedTitle'), t('invoicePreview.savedMessage'));
-      } else {
-        // On iOS — use Share sheet to "Save to Files"
-        await Share.open({
-          title: 'Save Invoice',
-          url: `file://${pdfFilePath}`,
-          type: 'application/pdf',
-          filename: fileName,
-          saveToFiles: true, // iOS: shows "Save to Files" prominently
-          failOnCancel: false,
-        });
-      }
-    } catch (error) {
-      if (error?.message !== 'User did not share') {
-        console.error('Save failed:', error);
-        Alert.alert(t('common.error'), t('invoicePreview.failedToSavePdf'));
-      }
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  // Helper: ArrayBuffer → Base64 string
-  function arrayBufferToBase64(buffer) {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
 
   // const paymentModes = ['Cash', 'UPI', 'Card', 'Net Banking'];
 
@@ -382,7 +314,6 @@ export default function Step4({ route, navigation }) {
     }
 
     try {
-      console.log('Sharing PDF:', pdfFilePath);
 
       await Share.open({
         title: 'Share Invoice',
@@ -528,9 +459,13 @@ export default function Step4({ route, navigation }) {
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.card}>
               <View style={styles.companyHeader}>
-                <Text style={styles.companyName}>Aadhi Engine Care</Text>
+               
+                <Text style={styles.companyName}>
+                  {master?.name || 'Aadhi Engine Care'}
+                </Text>
                 <Text style={styles.companyTag}>
-                  KIRLOSKAR Spares for R/HA/R1040/SL90 Engines
+                  {master?.engineName || 'KIRLOSKAR Spares for R/HA/R1040/SL90'}{' '}
+                  Engines
                 </Text>
               </View>
 
@@ -556,19 +491,28 @@ export default function Step4({ route, navigation }) {
                 <View style={styles.infoBlock}>
                   <View style={styles.inlineRow}>
                     <MapPin size={14} color={COLORS.primary} />
-                    <Text style={styles.infoText}>No. 5, Vetri Nagar</Text>
+                    <Text style={styles.infoText}>
+                      {master?.address || 'No. 5, Vetri Nagar'}
+                    </Text>
                   </View>
                   <Text style={styles.infoText}>
-                    Vickramasingapuram - 627425
+                    {master?.city || 'Vickramasingapuram'} -{' '}
+                    {master?.pincode || '627425'}
                   </Text>
-                  
 
                   <View style={styles.inlineRow}>
                     <PhoneCall size={14} color={COLORS.primary} />
                     <Text style={[styles.infoText, styles.callText]}>
-                      9865254161{' '}
+                      {master?.mobile || '9865254161'}{' '}
                     </Text>
                   </View>
+
+                  {master?.email ? (
+                    <View style={styles.inlineRow}>
+                      <Mail size={14} color={COLORS.primary} />
+                      <Text style={styles.infoText}>{master.email}</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
             </View>
@@ -928,6 +872,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
+  },
+  companyLogo: {
+    width: 64,
+    height: 64,
+    marginBottom: 6,
   },
   companyHeader: {
     backgroundColor: COLORS.primary,

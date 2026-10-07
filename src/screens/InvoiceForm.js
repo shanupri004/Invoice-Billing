@@ -255,17 +255,14 @@ useEffect(() => {
         totalAmount,
       };
 
-      console.log(payload,"======")
 
       let res;
       if (isEditMode && editingInvoiceId) {
         // Update existing invoice
-        console.log('Updating invoice with payload:', payload);
         res = await invoiceService.update(editingInvoiceId, payload);
         Alert.alert(t('common.success'), t('invoiceForm.invoiceUpdated'));
       } else {
         // Create new invoice
-        console.log('Creating invoice with payload:', payload);
         res = await invoiceService.create(payload);
         Alert.alert(t('common.success'), t('invoiceForm.invoiceCreated'));
       }

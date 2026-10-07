@@ -68,7 +68,6 @@ const mapInvoice = row => ({
 // ─────────────────────────────────────────────
 
 const toInvoice = payload => {
-  console.log(payload, 'in service');
 
   return {
     invoice_type: payload.invoiceType,

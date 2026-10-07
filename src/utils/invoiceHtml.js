@@ -2,15 +2,49 @@
 import { Logo, Sign } from '../assets/invoiceImages';
 import { COLORS } from '../constants/Colors';
 
+const escapeHtml = value =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
 export const buildInvoiceHtml = ({
   invoiceData,
   items,
   sign,
   amountInWords,
   grandTotal,
+  master,
 }) => {
   const data = invoiceData;
   const isLabour = data.invoiceType === 'LABOUR';
+function initials(name) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0]?.toUpperCase())
+      .join('')
+      .slice(0, 4) || 'INV'
+  )
+}
+  // Business details come from the `master` table; bundled values are the fallback.
+  const companyName = escapeHtml(master?.name || 'Aadhi Engine Care');
+  const engineName = escapeHtml(
+    master?.engineName || 'KIRLOSKAR SPARES FOR R/HA/R1040/SL90',
+  );
+  const address = escapeHtml(master?.address || 'No. 5, Vetri Nagar');
+  const cityLine = escapeHtml(
+    [master?.city || 'Vickramasingapuram', master?.pincode || '627425']
+      .filter(Boolean)
+      .join(' - '),
+  );
+  const mobile = escapeHtml(master?.mobile || '9865254161');
+  const email = escapeHtml(master?.email || '');
+  const mark = initials(companyName)
+  const logoSrc = master?.logo || Logo;
+  const signSrc = master?.signature || Sign;
 
   return `
 <!doctype html>
@@ -62,7 +96,7 @@ export const buildInvoiceHtml = ({
   <body>
     <div class="page">
       <div class="watermark">
-        <span class="watermark-mark">AEC</span>
+        <span class="watermark-mark">${mark}</span>
       </div>
 
       <div class="content">
@@ -71,15 +105,15 @@ export const buildInvoiceHtml = ({
             <tr>
               <td>
                 <div class="top-header">
-                  <h1 class="company-name">Aadhi Engine Care</h1>
-                  <div class="company-mark">AEC</div>
+                  <h1 class="company-name">${companyName}</h1>
+                  <div class="company-mark">${mark}</div>
                 </div>
                 <div class="company-details">
                   <p>
-                    <b>KIRLOSKAR SPARES FOR R/HA/R1040/SL90</b> Engines <br/>
-                    No. 5, Vetri Nagar <br/>
-                    Vickramasingapuram - 627425 <br/>
-                    <b>Cell: 9865254161</b>
+                    <b>${engineName}</b> Engines <br/>
+                    ${address} <br/>
+                    ${cityLine} <br/>
+                    <b>Cell: ${mobile}</b>
                   </p>
                 </div>
               </td>
@@ -101,7 +135,7 @@ export const buildInvoiceHtml = ({
           </table>
 
          <div class="logo">
-            <img src="${Logo}" alt="AEC Logo" />
+            <img src="${logoSrc}" alt="Logo" />
           </div>
         </div>
 
@@ -122,7 +156,7 @@ export const buildInvoiceHtml = ({
           <table style="width:70%;border-collapse:collapse;font-size:14px;text-align:center;font-family:'Times New Roman',serif;">
             <tr>
               <td style="border:1px solid #fff;padding:2px;background:#133c98;color:#fff;font-weight:bold;">Billed From</td>
-              <td style="border:1px solid #000;padding:2px">Aadhi Engine Care</td>
+              <td style="border:1px solid #000;padding:2px">${companyName}</td>
             </tr>
             ${
               data.paymentStatus !== 'PENDING'
@@ -204,11 +238,11 @@ export const buildInvoiceHtml = ({
           </table>
 
           <table style="width:70%;border-collapse:collapse;font-size:14px;text-align:center;font-family:'Times New Roman',serif;border:1px solid #000;">
-            <tr><td style="border:none;padding:8px;font-size:15px"><b>Aadhi Engine Care</b></td></tr>
+            <tr><td style="border:none;padding:8px;font-size:15px"><b>${companyName}</b></td></tr>
             <tr>
               ${
                 sign
-                  ? `<td style="border:none;padding:8px 12px"><img src="${Sign}" width="60%" height="40%" /></td>`
+                  ? `<td style="border:none;padding:8px 12px"><img src="${signSrc}" width="60%" height="40%" /></td>`
                   : `<td style="border:none;padding:8px 12px"></td>`
               }
             </tr>
