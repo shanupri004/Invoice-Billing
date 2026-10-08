@@ -80,11 +80,13 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// Read from environment variables first, then Gradle properties (e.g. ~/.gradle/gradle.properties).
+def signingValue = { String name -> System.getenv(name) ?: project.findProperty(name) }
 def releaseSigningValues = [
-    storeFile: System.getenv("ANDROID_KEYSTORE_FILE"),
-    storePassword: System.getenv("ANDROID_KEYSTORE_PASSWORD"),
-    keyAlias: System.getenv("ANDROID_KEY_ALIAS"),
-    keyPassword: System.getenv("ANDROID_KEY_PASSWORD"),
+    storeFile: signingValue("ANDROID_KEYSTORE_FILE"),
+    storePassword: signingValue("ANDROID_KEYSTORE_PASSWORD"),
+    keyAlias: signingValue("ANDROID_KEY_ALIAS"),
+    keyPassword: signingValue("ANDROID_KEY_PASSWORD"),
 ]
 def hasReleaseSigning = releaseSigningValues.values().every { it }
 if (releaseSigningValues.values().any { it } && !hasReleaseSigning) {
